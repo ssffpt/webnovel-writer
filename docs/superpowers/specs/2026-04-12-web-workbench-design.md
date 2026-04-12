@@ -50,6 +50,25 @@
 
 不作为第一版。成本高，复用现有 Claude Code 链路最少。
 
+## 改造原则
+
+本方案默认 **在现有 Dashboard 基础上演进**，不是新建一个独立的 Web 产品。
+
+### 明确原则
+
+1. **保留现有写作链路**：继续复用 Claude Code、现有 Skills、Agents，以及 `.webnovel/state.json`、`index.db` 等数据层。
+2. **保留现有 Web 底座**：继续使用 `webnovel-writer/dashboard/app.py`、`webnovel-writer/dashboard/server.py` 和 `webnovel-writer/dashboard/frontend/` 作为改造基础。
+3. **从只读 Dashboard 演进到可编辑 Workbench**：第一版是在现有只读页面能力上增加编辑、聊天、动作卡、任务面板，而不是推翻重写。
+4. **后端新增适配层，不重写写作流程**：网页负责交互与调度，底层规划、写作、审查流程仍复用现有 Claude Code 命令与工作流。
+5. **优先改造，避免分叉**：除非现有结构被证明无法承载，否则不新建平行的前后端项目。
+
+### 对现有项目的直接含义
+
+- 现有 Dashboard API 与静态托管机制继续保留
+- 现有前端工程继续扩展，而不是另起一个新前端
+- 现有数据展示能力尽可能复用到新工作台中
+- Phase 1/Phase 2 默认都是“升级当前页面”，不是“重做一套页面”
+
 ## 总体架构
 
 ```text
