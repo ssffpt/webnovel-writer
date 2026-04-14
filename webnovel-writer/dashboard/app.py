@@ -1,7 +1,8 @@
 """
 Webnovel Dashboard - FastAPI 主应用
 
-仅提供 GET 接口（严格只读）；所有文件读取经过 path_guard 防穿越校验。
+Phase 1 以只读查询为主，并补充 workbench 所需的最小写接口；
+所有文件访问都经过 path_guard 防穿越校验。
 """
 
 import asyncio
@@ -17,6 +18,9 @@ from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from .path_guard import safe_resolve
+from .models import TASK_IDLE_PAYLOAD
+from .task_service import TaskService
+from .workbench_service import build_chat_response, load_project_summary, save_workspace_file
 from .watcher import FileWatcher
 
 # ---------------------------------------------------------------------------
@@ -24,6 +28,7 @@ from .watcher import FileWatcher
 # ---------------------------------------------------------------------------
 _project_root: Path | None = None
 _watcher = FileWatcher()
+_task_service = TaskService()
 
 STATIC_DIR = Path(__file__).parent / "frontend" / "dist"
 
@@ -51,6 +56,7 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
     @asynccontextmanager
     async def _lifespan(_: FastAPI):
         webnovel = _webnovel_dir()
+        _task_service.set_event_loop(asyncio.get_running_loop())
         if webnovel.is_dir():
             _watcher.start(webnovel, asyncio.get_running_loop())
         try:
@@ -63,7 +69,7 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_methods=["GET"],
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
 
@@ -78,6 +84,10 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
         if not state_path.is_file():
             raise HTTPException(404, "state.json 不存在")
         return json.loads(state_path.read_text(encoding="utf-8"))
+
+    @app.get("/api/workbench/summary")
+    def workbench_summary():
+        return load_project_summary(_get_project_root())
 
     # ===========================================================
     # API：实体数据库（index.db 只读查询）
@@ -374,24 +384,78 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
 
         return {"path": path, "content": content}
 
+    @app.post("/api/files/save")
+    def file_save(payload: dict):
+        path = payload.get("path")
+        content = payload.get("content")
+        if not isinstance(path, str) or not isinstance(content, str):
+            raise HTTPException(400, "path 和 content 必须为字符串")
+        return save_workspace_file(_get_project_root(), path, content)
+
+    @app.get("/api/tasks/current")
+    def current_task():
+        return _task_service.get_current_task()
+
+    @app.post("/api/tasks")
+    def create_task(payload: dict):
+        action = payload.get("action")
+        context = payload.get("context")
+        if not isinstance(action, dict):
+            raise HTTPException(400, "action 必须为对象")
+        if context is not None and not isinstance(context, dict):
+            raise HTTPException(400, "context 必须为对象")
+        merged_context = {
+            **(context or {}),
+            "projectRoot": str(_get_project_root()),
+        }
+        return _task_service.create_task(action, merged_context)
+
+    @app.get("/api/tasks/{task_id}")
+    def get_task(task_id: str):
+        task = _task_service.get_task(task_id)
+        if task is None:
+            raise HTTPException(404, "任务不存在")
+        return task
+
+    @app.post("/api/chat")
+    def chat(payload: dict):
+        message = payload.get("message")
+        context = payload.get("context")
+        if not isinstance(message, str):
+            raise HTTPException(400, "message 必须为字符串")
+        if context is not None and not isinstance(context, dict):
+            raise HTTPException(400, "context 必须为对象")
+        return build_chat_response(message, context)
+
     # ===========================================================
     # SSE：实时变更推送
     # ===========================================================
 
     @app.get("/api/events")
     async def sse():
-        """Server-Sent Events 端点，推送 .webnovel/ 下的文件变更。"""
-        q = _watcher.subscribe()
+        """Server-Sent Events 端点，推送文件变更与任务状态。"""
+        file_q = _watcher.subscribe()
+        task_q = _task_service.subscribe_events()
 
         async def _gen():
             try:
                 while True:
-                    msg = await q.get()
-                    yield f"data: {msg}\n\n"
+                    file_get = asyncio.create_task(file_q.get())
+                    task_get = asyncio.create_task(task_q.get())
+                    done, pending = await asyncio.wait(
+                        {file_get, task_get},
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                    for waiter in pending:
+                        waiter.cancel()
+                    for waiter in done:
+                        msg = waiter.result()
+                        yield f"data: {msg}\n\n"
             except asyncio.CancelledError:
                 pass
             finally:
-                _watcher.unsubscribe(q)
+                _watcher.unsubscribe(file_q)
+                _task_service.unsubscribe_events(task_q)
 
         return StreamingResponse(_gen(), media_type="text/event-stream")
 
@@ -400,11 +464,15 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
     # ===========================================================
 
     if STATIC_DIR.is_dir():
-        app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
+        assets_dir = STATIC_DIR / "assets"
+        if assets_dir.is_dir():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
         @app.get("/{full_path:path}")
         def serve_spa(full_path: str):
             """SPA fallback：任何非 /api 路径都返回 index.html。"""
+            if full_path.startswith("api/"):
+                raise HTTPException(404, "API 路由不存在")
             index = STATIC_DIR / "index.html"
             if index.is_file():
                 return FileResponse(str(index))

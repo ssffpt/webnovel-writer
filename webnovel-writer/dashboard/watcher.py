@@ -62,7 +62,7 @@ class FileWatcher:
 
     def _on_change(self, path: str, kind: str):
         """在 watchdog 线程中调用，向主事件循环投递通知。"""
-        msg = json.dumps({"file": Path(path).name, "kind": kind, "ts": time.time()})
+        msg = json.dumps({"type": "file.changed", "file": Path(path).name, "kind": kind, "ts": time.time()})
         if self._loop and not self._loop.is_closed():
             self._loop.call_soon_threadsafe(self._dispatch, msg)
 
