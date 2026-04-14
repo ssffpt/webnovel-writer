@@ -14,6 +14,44 @@ export async function fetchJSON(path, params = {}) {
     return res.json();
 }
 
+export async function postJSON(path, body = {}) {
+    const res = await fetch(`${BASE}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res.json();
+}
+
+export function fetchFileTree() {
+    return fetchJSON('/api/files/tree');
+}
+
+export function readFile(path) {
+    return fetchJSON('/api/files/read', { path });
+}
+
+export function saveFile(path, content) {
+    return postJSON('/api/files/save', { path, content });
+}
+
+export function sendChat(message, context = {}) {
+    return postJSON('/api/chat', { message, context });
+}
+
+export function fetchCurrentTask() {
+    return fetchJSON('/api/tasks/current');
+}
+
+export function createTask(action, context = {}) {
+    return postJSON('/api/tasks', { action, context });
+}
+
+export function fetchTask(taskId) {
+    return fetchJSON(`/api/tasks/${taskId}`);
+}
+
 /**
  * 订阅 SSE 实时事件流
  * @param {function} onMessage  收到 data 时回调

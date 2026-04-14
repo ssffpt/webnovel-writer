@@ -741,3 +741,349 @@ body {
     min-height: 280px;
   }
 }
+
+.workbench-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.workbench-topbar {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 220px;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 3px solid var(--border-main);
+  background: linear-gradient(180deg, #ffe8b8 0%, #fff4d6 100%);
+}
+
+.workbench-topbar-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.workbench-topbar-subtitle {
+  margin-top: 4px;
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.workbench-topbar-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.workbench-nav-button,
+.workbench-primary-button {
+  border: 2px solid var(--border-main);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.workbench-nav-button {
+  padding: 10px 14px;
+}
+
+.workbench-nav-button.active {
+  background: #dff3ff;
+  border-color: var(--accent-blue);
+}
+
+.workbench-primary-button {
+  padding: 10px 14px;
+  margin-top: 12px;
+}
+
+.workbench-topbar-status {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--border-main);
+  background: var(--accent-green);
+}
+
+.status-dot.disconnected {
+  background: var(--accent-red);
+}
+
+.workbench-task-badge {
+  border: 2px solid var(--border-main);
+  background: #fff;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.workbench-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  padding: 20px;
+}
+
+.workbench-main {
+  min-width: 0;
+}
+
+.workbench-page {
+  min-width: 0;
+}
+
+.workbench-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.workbench-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workbench-panel {
+  background: var(--bg-card);
+  border: 3px solid var(--border-main);
+  box-shadow: var(--shadow-main);
+  padding: 16px;
+}
+
+.workbench-panel h3 {
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.workbench-meta-list,
+.workbench-message-list,
+.workbench-action-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty-text {
+  color: var(--text-mute);
+}
+
+.error-text {
+  color: var(--accent-red);
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .workbench-topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .workbench-topbar-status {
+    justify-content: flex-start;
+  }
+
+  .workbench-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chapter-workspace {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.chapter-list-panel,
+.chapter-editor-panel {
+  min-width: 0;
+}
+
+.chapter-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chapter-file-button {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 2px solid var(--border-main);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.chapter-file-button.active {
+  background: #dff3ff;
+  border-color: var(--accent-blue);
+}
+
+.chapter-file-meta {
+  color: var(--text-mute);
+  font-size: 12px;
+}
+
+.chapter-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.chapter-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chapter-placeholder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.chapter-editor-textarea {
+  width: 100%;
+  min-height: 420px;
+  resize: vertical;
+  border: 2px solid var(--border-main);
+  background: #fffef8;
+  color: var(--text-main);
+  padding: 14px;
+  font: inherit;
+  line-height: 1.7;
+}
+
+@media (max-width: 960px) {
+  .chapter-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .chapter-editor-header {
+    flex-direction: column;
+  }
+}
+
+.setting-category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.setting-category-button {
+  border: 2px solid var(--border-main);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  padding: 8px 10px;
+  font-weight: 700;
+}
+
+.setting-category-button.active {
+  background: #dcfafe;
+  border-color: var(--accent-cyan);
+}
+
+.settings-file-list {
+  margin-top: 8px;
+}
+
+.workbench-chat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.workbench-chat-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 96px;
+  border: 2px solid var(--border-main);
+  background: #fffef8;
+  color: var(--text-main);
+  padding: 12px;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.workbench-message-item {
+  border: 2px solid var(--border-main);
+  background: #fffef8;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.workbench-message-item.assistant {
+  background: #eef7ff;
+}
+
+.message-role {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-mute);
+}
+
+.workbench-action-item {
+  border: 2px solid var(--border-main);
+  background: #fffef8;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.action-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.workbench-task-log-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.workbench-task-log-item {
+  border: 1px solid var(--border-soft);
+  background: #fffef8;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message-reason,
+.message-scope {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.message-scope {
+  color: var(--text-mute);
+}
