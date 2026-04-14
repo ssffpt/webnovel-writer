@@ -414,6 +414,17 @@ git commit -m "Document the Phase 3 completion bar for chat-driven workbench gui
 
 ---
 
+## Phase 3 Done Means
+
+- `POST /api/chat` 返回增强结构：`reply / suggested_actions / reason / scope`
+- 聊天建议感知当前页面、当前选中文件与 `dirty` 状态
+- 前端聊天区展示建议理由与作用范围
+- 任务创建、完成、失败会回流到聊天消息流，而不是只停留在任务卡里
+- 动作完成后，聊天提示会明确说明“当前页面已刷新”或“可前往某页查看结果”
+- 现有前端测试、后端测试与前端构建全部通过
+
+---
+
 ## Self-Review
 
 ### Spec coverage

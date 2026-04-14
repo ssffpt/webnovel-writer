@@ -1103,3 +1103,42 @@ body {
 .workbench-task-log-list + .workbench-primary-button {
   margin-top: 10px;
 }
+
+.workbench-notice {
+  margin-top: 10px;
+  border: 2px solid var(--border-main);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workbench-notice.notice-refresh {
+  background: #e6f9ee;
+}
+
+.workbench-notice.notice-navigate {
+  background: #eef7ff;
+}
+
+.notice-nav-button {
+  padding: 6px 10px;
+  font-size: 13px;
+  align-self: flex-start;
+}
+
+.workbench-recovery-tips {
+  list-style: none;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recovery-tip-item {
+  border: 1px solid var(--border-soft);
+  background: #fff8f0;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text-sub);
+}

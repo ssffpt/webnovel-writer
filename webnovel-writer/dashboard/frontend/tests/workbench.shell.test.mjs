@@ -81,6 +81,8 @@ test('buildRightSidebarModel preserves context and normalizes empty collections'
     logs: [],
     result: null,
     error: null,
+    completionNotice: null,
+    recoveryTips: [],
   })
   assert.equal(model.chatPending, false)
 })
@@ -101,6 +103,8 @@ test('buildRightSidebarModel provides stable empty defaults', async () => {
     logs: [],
     result: null,
     error: null,
+    completionNotice: null,
+    recoveryTips: [],
   })
   assert.equal(model.chatPending, false)
 })

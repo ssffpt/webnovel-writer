@@ -70,17 +70,27 @@ export function buildRightSidebarModel({
   suggestedActions = [],
   currentTask = null,
   chatPending = false,
+  activePage = null,
 } = {}) {
+  const task = currentTask ?? IDLE_TASK
+  const completionNotice =
+    task.status === 'completed' && task.actionType
+      ? buildCompletionNotice({ activePage, actionType: task.actionType, summary: task.result?.summary })
+      : null
+  const recoveryTips = buildFailureRecoveryTips(task)
+
   return {
     context,
     chatMessages,
     suggestedActions,
     currentTask: {
       ...IDLE_TASK,
-      ...(currentTask ?? {}),
-      logs: currentTask?.logs ?? [],
-      result: currentTask?.result ?? null,
-      error: currentTask?.error ?? null,
+      ...task,
+      logs: task.logs ?? [],
+      result: task.result ?? null,
+      error: task.error ?? null,
+      completionNotice,
+      recoveryTips,
     },
     chatPending,
   }
@@ -127,6 +137,14 @@ export function buildFailureRecoveryTips(task) {
     '检查当前选中文件是否已保存，未保存的修改可能导致任务失败。',
     '重新发送聊天需求或重试该动作，必要时调整描述后再次执行。',
   ]
+}
+
+export function shouldConfirmAction(context) {
+  return context?.dirty === true
+}
+
+export function shouldConfirmNavigation(context) {
+  return context?.dirty === true
 }
 
 export function buildChatReplyModel(response, fallbackContext = null) {

@@ -8,6 +8,7 @@ import {
   createInitialWorkbenchState,
   normalizeWorkbenchPage,
   resolveTargetPage,
+  shouldConfirmAction,
 } from './workbench/data.js'
 import TopBar from './workbench/TopBar.jsx'
 import RightSidebar from './workbench/RightSidebar.jsx'
@@ -95,6 +96,7 @@ export default function App() {
               logs: task.logs || [],
               result: task.result ?? null,
               error: task.error ?? null,
+              actionType: task.action?.type ?? prev.currentTask.actionType ?? null,
             },
             chatMessages:
               prev.currentTask.updatedAt !== task.updatedAt &&
@@ -186,8 +188,9 @@ export default function App() {
       suggestedActions: workbenchState.suggestedActions,
       currentTask: workbenchState.currentTask,
       chatPending,
+      activePage,
     }),
-    [chatPending, sidebarContext, workbenchState.chatMessages, workbenchState.currentTask, workbenchState.suggestedActions],
+    [activePage, chatPending, sidebarContext, workbenchState.chatMessages, workbenchState.currentTask, workbenchState.suggestedActions],
   )
 
   const handlePageStateChange = useCallback((page, state) => {
@@ -280,6 +283,9 @@ export default function App() {
   const handleRunAction = useCallback((action) => {
     async function run() {
       if (!action) return
+      if (shouldConfirmAction(sidebarContext) && !window.confirm('当前页面有未保存的修改，执行动作可能覆盖内容。确定继续？')) {
+        return
+      }
       const taskName = action.label || '执行动作'
 
       lastActionRef.current = action
@@ -293,6 +299,7 @@ export default function App() {
           logs: [],
           result: null,
           error: null,
+          actionType: action.type ?? null,
         },
         suggestedActions: prev.suggestedActions.filter(item => item !== action),
       }))
@@ -310,6 +317,7 @@ export default function App() {
             logs: createdTask.logs || [],
             result: createdTask.result ?? null,
             error: createdTask.error ?? null,
+            actionType: createdTask.action?.type ?? action.type ?? null,
           },
           chatMessages: [
             ...prev.chatMessages,
@@ -336,6 +344,7 @@ export default function App() {
             logs: [],
             result: null,
             error: error instanceof Error ? error.message : '未知错误',
+            actionType: action.type ?? null,
           },
         }))
       }

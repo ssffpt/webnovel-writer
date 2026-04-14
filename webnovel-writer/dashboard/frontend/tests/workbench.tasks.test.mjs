@@ -36,6 +36,12 @@ test('buildRightSidebarModel preserves task logs and error state', async () => {
     ],
     result: null,
     error: '检查当前设定冲突 执行失败',
+    completionNotice: null,
+    recoveryTips: [
+      '返回当前页面继续编辑，确认内容未被意外修改。',
+      '检查当前选中文件是否已保存，未保存的修改可能导致任务失败。',
+      '重新发送聊天需求或重试该动作，必要时调整描述后再次执行。',
+    ],
   })
 })
 

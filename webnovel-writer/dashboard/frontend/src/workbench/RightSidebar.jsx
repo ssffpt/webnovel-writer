@@ -99,12 +99,33 @@ export default function RightSidebar({ model, onSendMessage, onRunAction, onRetr
         <p>步骤：{model.currentTask.step || '暂无'}</p>
         <p>更新时间：{model.currentTask.updatedAt || '暂无'}</p>
         {model.currentTask.error ? <p className="error-text">错误：{model.currentTask.error}</p> : null}
+        {model.currentTask.completionNotice ? (
+          <div className={`workbench-notice ${model.currentTask.completionNotice.hint === 'navigate' ? 'notice-navigate' : 'notice-refresh'}`}>
+            <span>{model.currentTask.completionNotice.message}</span>
+            {model.currentTask.completionNotice.hint === 'navigate' && model.currentTask.completionNotice.targetPage ? (
+              <button
+                type="button"
+                className="workbench-nav-button notice-nav-button"
+                onClick={() => onNavigateToPage?.(model.currentTask.completionNotice.targetPage)}
+              >
+                前往${{ chapters: '章节页', outline: '大纲页', settings: '设定页' }[model.currentTask.completionNotice.targetPage] || '对应页面'}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {model.currentTask.recoveryTips && model.currentTask.recoveryTips.length > 0 ? (
+          <ul className="workbench-recovery-tips">
+            {model.currentTask.recoveryTips.map((tip, index) => (
+              <li key={`tip-${index}`} className="recovery-tip-item">{tip}</li>
+            ))}
+          </ul>
+        ) : null}
         {model.currentTask.status === 'failed' && onRetryAction ? (
           <button type="button" className="workbench-primary-button" onClick={onRetryAction}>
             重试
           </button>
         ) : null}
-        {model.currentTask.result?.summary ? (
+        {model.currentTask.result?.summary && !model.currentTask.completionNotice ? (
           <p className="empty-text">结果：{model.currentTask.result.summary}</p>
         ) : null}
         {model.currentTask.logs.length > 0 ? (
