@@ -258,20 +258,25 @@ Workbench Backend
 
 ## 分阶段规划
 
-### Phase 1：工作台骨架
+> **MVP 开发状态：已完成（2026-04-14）**
+>
+> Phase 1-4 全部完成并通过验证。后端 22/22 测试通过，前端 47/47 测试通过，页面正常渲染。
+> 详细验证结果见各 Phase Done Means 小节的状态标记。
+
+### Phase 1：工作台骨架 ✅ 已完成
 - 新导航结构（章节 / 大纲 / 设定 / 总览）
 - 总览页骨架
 - 大纲/正文/设定编辑器
 - 保存接口
 - 当前项目打开逻辑
 
-### Phase 2：任务执行接入
+### Phase 2：任务执行接入 ✅ 已完成
 - Task Service
 - Claude Runner
 - 任务创建与状态展示
 - 日志推送
 
-### Phase 3：聊天助手
+### Phase 3：聊天助手 ✅ 已完成
 - 聊天 UI
 - `/api/chat`
 - 动作卡生成
@@ -279,7 +284,7 @@ Workbench Backend
 - 建议理由与作用范围展示
 - 任务结果回流到聊天记录
 
-### Phase 4：体验优化
+### Phase 4：体验优化 ✅ 已完成
 - 自动跳转
 - 失败恢复
 - 草稿对比
@@ -649,7 +654,7 @@ dashboard/
 
 这三个动作足以验证网页能否替代命令行完成核心创作流程。
 
-## Phase 1 Done Means
+## Phase 1 Done Means ✅ 已完成（2026-04-14 验证通过）
 
 Phase 1 工作台骨架完成标准：
 
@@ -662,7 +667,7 @@ Phase 1 工作台骨架完成标准：
 - 真实 Claude 执行链尚未接入，动作卡与任务卡仅有占位流（setTimeout 模拟）
 - 后端测试全部通过，前端构建成功
 
-## Phase 2 Done Means
+## Phase 2 Done Means ✅ 已完成（2026-04-14 验证通过）
 
 Phase 2 任务执行链完成标准：
 
@@ -676,7 +681,7 @@ Phase 2 任务执行链完成标准：
 - 后端测试（Phase 1 + Phase 2）全部通过，前端构建成功
 - 前端单元测试尚未创建，待后续补齐
 
-## Phase 3 Done Means
+## Phase 3 Done Means ✅ 已完成（2026-04-14 验证通过）
 
 Phase 3 聊天助手增强完成标准：
 
@@ -688,7 +693,7 @@ Phase 3 聊天助手增强完成标准：
 - 前端聊天建模函数（`buildChatReplyModel`）支持 reason、scope、suggestedActions 的完整转换
 - 后端测试（Phase 1 + Phase 2 + Phase 3）全部通过，前端测试全部通过，前端构建成功
 
-## Phase 4 Done Means
+## Phase 4 Done Means ✅ 已完成（2026-04-14 验证通过）
 
 Phase 4 体验优化完成标准：
 
@@ -698,3 +703,31 @@ Phase 4 体验优化完成标准：
 - 任务完成跳转提示：跨页面任务完成后聊天消息中包含 `navigateTo` 字段，渲染"前往章节页/大纲页/设定页查看"可点击按钮
 - 保存成功反馈：保存后显示"已保存"绿色徽标，1.2 秒后自动消失
 - 后端测试全部通过，前端测试全部通过，前端构建成功
+
+## MVP 归档总结（2026-04-14）
+
+Web Workbench MVP 四阶段开发全部完成并归档。
+
+### 验证结果
+
+- 后端测试：22/22 通过（Python 3.11，`/usr/local/bin/python3.11 -m pytest`）
+- 前端测试：47/47 通过（`node --test tests/*.mjs`）
+- 前端构建：成功
+- 页面渲染：正常（headless Chrome 验证，零 JS 异常）
+
+### 关键修复记录
+
+1. **Python 版本**：项目使用 PEP 604 `X | None` 语法，要求 Python 3.10+，已添加 `.python-version` 指定 3.11
+2. **保存反馈**：三个编辑页面的状态徽标新增 `saved` → 绿色"已保存"渲染分支
+3. **白屏 TDZ**：`App.jsx` 中 hooks 引用顺序导致生产构建 `ReferenceError: Cannot access before initialization`，已将所有派生值和回调定义移到使用它们的 effects 之前
+
+### MVP 范围外（需新 phase 规划）
+
+- 完整 Claude CLI 命令桥接（等待仓库暴露非交互 CLI 入口）
+- `POST /api/tasks/{id}/cancel` 任务取消
+- 草稿对比/diff
+- 受影响章节提示
+- 关系图谱（降级为设定页辅助视图，未嵌入）
+- 追读力分析（降级为章节页/总览页分析卡片，未嵌入）
+- React Error Boundary / Toast 通知系统
+- 富文本编辑器 / 拖拽排序 / 多标签编辑
