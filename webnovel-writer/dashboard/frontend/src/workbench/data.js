@@ -86,6 +86,49 @@ export function buildRightSidebarModel({
   }
 }
 
+export function resolveTargetPage(actionType) {
+  if (actionType === 'write_chapter' || actionType === 'review_chapter') return 'chapters'
+  if (actionType === 'plan_outline') return 'outline'
+  if (actionType === 'inspect_setting') return 'settings'
+  return null
+}
+
+const PAGE_LABELS = { chapters: '章节页', outline: '大纲页', settings: '设定页' }
+
+export function buildCompletionNotice({ activePage, actionType, summary } = {}) {
+  const targetPage = resolveTargetPage(actionType)
+  const fallbackSummary = summary || '任务已完成'
+
+  if (!targetPage) {
+    return { hint: null, message: fallbackSummary, targetPage: null }
+  }
+
+  if (activePage === targetPage) {
+    return {
+      hint: 'refresh',
+      message: `${fallbackSummary}，当前页面已刷新。`,
+      targetPage,
+    }
+  }
+
+  const label = PAGE_LABELS[targetPage] || '对应页面'
+  return {
+    hint: 'navigate',
+    message: `${fallbackSummary}，可前往${label}查看结果。`,
+    targetPage,
+  }
+}
+
+export function buildFailureRecoveryTips(task) {
+  if (!task || task.status !== 'failed') return []
+
+  return [
+    '返回当前页面继续编辑，确认内容未被意外修改。',
+    '检查当前选中文件是否已保存，未保存的修改可能导致任务失败。',
+    '重新发送聊天需求或重试该动作，必要时调整描述后再次执行。',
+  ]
+}
+
 export function buildChatReplyModel(response, fallbackContext = null) {
   const scope = response?.scope ?? {
     page: fallbackContext?.page ?? null,

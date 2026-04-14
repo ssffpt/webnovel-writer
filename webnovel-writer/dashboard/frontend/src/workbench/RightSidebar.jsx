@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function RightSidebar({ model, onSendMessage, onRunAction }) {
+export default function RightSidebar({ model, onSendMessage, onRunAction, onRetryAction, onNavigateToPage }) {
   const [message, setMessage] = useState('')
 
   function handleSubmit(event) {
@@ -37,6 +37,15 @@ export default function RightSidebar({ model, onSendMessage, onRunAction }) {
                 <span>{message.content}</span>
                 {message.reason ? (
                   <span className="message-reason">推荐原因：{message.reason}</span>
+                ) : null}
+                {message.navigateTo ? (
+                  <button
+                    type="button"
+                    className="workbench-nav-button message-nav-button"
+                    onClick={() => onNavigateToPage?.(message.navigateTo)}
+                  >
+                    前往${{ chapters: '章节页', outline: '大纲页', settings: '设定页' }[message.navigateTo] || '对应页面'}查看
+                  </button>
                 ) : null}
                 {message.scope?.page || message.scope?.selectedPath ? (
                   <span className="message-scope">
@@ -90,6 +99,11 @@ export default function RightSidebar({ model, onSendMessage, onRunAction }) {
         <p>步骤：{model.currentTask.step || '暂无'}</p>
         <p>更新时间：{model.currentTask.updatedAt || '暂无'}</p>
         {model.currentTask.error ? <p className="error-text">错误：{model.currentTask.error}</p> : null}
+        {model.currentTask.status === 'failed' && onRetryAction ? (
+          <button type="button" className="workbench-primary-button" onClick={onRetryAction}>
+            重试
+          </button>
+        ) : null}
         {model.currentTask.result?.summary ? (
           <p className="empty-text">结果：{model.currentTask.result.summary}</p>
         ) : null}

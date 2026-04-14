@@ -13,7 +13,7 @@ function flattenFiles(nodes = []) {
   return files
 }
 
-export default function ChapterPage({ loading, loadError, onRetry, onContextChange, reloadToken = 0 }) {
+export default function ChapterPage({ loading, loadError, onRetry, onContextChange, onPageStateChange, cachedSelectedPath = null, reloadToken = 0 }) {
   const [treeLoading, setTreeLoading] = useState(true)
   const [treeError, setTreeError] = useState('')
   const [chapterFiles, setChapterFiles] = useState([])
@@ -33,7 +33,11 @@ export default function ChapterPage({ loading, loadError, onRetry, onContextChan
         const files = flattenFiles(tree['正文'] || [])
         if (!active) return
         setChapterFiles(files)
-        setSelectedPath(current => current ?? files[0]?.path ?? null)
+        if (cachedSelectedPath && files.some(f => f.path === cachedSelectedPath)) {
+          setSelectedPath(current => current ?? cachedSelectedPath)
+        } else {
+          setSelectedPath(current => current ?? files[0]?.path ?? null)
+        }
       } catch (error) {
         if (!active) return
         setTreeError(error instanceof Error ? error.message : '加载章节列表失败')
@@ -81,12 +85,20 @@ export default function ChapterPage({ loading, loadError, onRetry, onContextChan
       selectedPath,
       dirty,
     })
-  }, [dirty, onContextChange, selectedPath])
+    onPageStateChange?.('chapters', { selectedPath, dirty })
+  }, [dirty, onContextChange, onPageStateChange, selectedPath])
 
   const selectedFile = useMemo(
     () => chapterFiles.find(file => file.path === selectedPath) ?? null,
     [chapterFiles, selectedPath],
   )
+
+  function handleSelectFile(path) {
+    if (dirty && selectedPath !== path && !window.confirm('当前文件有未保存的修改，切换文件将丢失修改。确定继续？')) {
+      return
+    }
+    setSelectedPath(path)
+  }
 
   async function handleSave() {
     if (!selectedPath) return
@@ -131,7 +143,7 @@ export default function ChapterPage({ loading, loadError, onRetry, onContextChan
                   key={file.path}
                   type="button"
                   className={`chapter-file-button ${selectedPath === file.path ? 'active' : ''}`}
-                  onClick={() => setSelectedPath(file.path)}
+                  onClick={() => handleSelectFile(file.path)}
                 >
                   <span>{file.name}</span>
                   <span className="chapter-file-meta">{file.size ?? 0} B</span>

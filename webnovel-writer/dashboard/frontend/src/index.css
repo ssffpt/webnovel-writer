@@ -1087,3 +1087,19 @@ body {
 .message-scope {
   color: var(--text-mute);
 }
+
+.message-nav-button {
+  margin-top: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.card-badge.badge-green {
+  background: #e6f9ee;
+  color: #1a7a3a;
+  border-color: #4caf6a;
+}
+
+.workbench-task-log-list + .workbench-primary-button {
+  margin-top: 10px;
+}

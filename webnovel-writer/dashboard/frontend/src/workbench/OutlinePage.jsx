@@ -20,7 +20,7 @@ function inferOutlineKind(path = '') {
   return '大纲文件'
 }
 
-export default function OutlinePage({ loading, loadError, onRetry, onContextChange, reloadToken = 0 }) {
+export default function OutlinePage({ loading, loadError, onRetry, onContextChange, onPageStateChange, cachedSelectedPath = null, reloadToken = 0 }) {
   const [treeLoading, setTreeLoading] = useState(true)
   const [treeError, setTreeError] = useState('')
   const [outlineFiles, setOutlineFiles] = useState([])
@@ -40,7 +40,11 @@ export default function OutlinePage({ loading, loadError, onRetry, onContextChan
         const files = flattenFiles(tree['大纲'] || [])
         if (!active) return
         setOutlineFiles(files)
-        setSelectedPath(current => current ?? files[0]?.path ?? null)
+        if (cachedSelectedPath && files.some(f => f.path === cachedSelectedPath)) {
+          setSelectedPath(current => current ?? cachedSelectedPath)
+        } else {
+          setSelectedPath(current => current ?? files[0]?.path ?? null)
+        }
       } catch (error) {
         if (!active) return
         setTreeError(error instanceof Error ? error.message : '加载大纲列表失败')
@@ -87,12 +91,20 @@ export default function OutlinePage({ loading, loadError, onRetry, onContextChan
       selectedPath,
       dirty,
     })
-  }, [dirty, onContextChange, selectedPath])
+    onPageStateChange?.('outline', { selectedPath, dirty })
+  }, [dirty, onContextChange, onPageStateChange, selectedPath])
 
   const selectedFile = useMemo(
     () => outlineFiles.find(file => file.path === selectedPath) ?? null,
     [outlineFiles, selectedPath],
   )
+
+  function handleSelectFile(path) {
+    if (dirty && selectedPath !== path && !window.confirm('当前文件有未保存的修改，切换文件将丢失修改。确定继续？')) {
+      return
+    }
+    setSelectedPath(path)
+  }
 
   async function handleSave() {
     if (!selectedPath) return
@@ -139,7 +151,7 @@ export default function OutlinePage({ loading, loadError, onRetry, onContextChan
                   key={file.path}
                   type="button"
                   className={`chapter-file-button ${selectedPath === file.path ? 'active' : ''}`}
-                  onClick={() => setSelectedPath(file.path)}
+                  onClick={() => handleSelectFile(file.path)}
                 >
                   <span>{file.name}</span>
                   <span className="chapter-file-meta">{inferOutlineKind(file.path)}</span>

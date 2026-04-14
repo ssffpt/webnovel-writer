@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createTask, fetchCurrentTask, fetchJSON, sendChat, subscribeSSE } from './api.js'
 import {
   buildChatReplyModel,
+  buildCompletionNotice,
   buildRightSidebarModel,
   buildTopBarModel,
   createInitialWorkbenchState,
   normalizeWorkbenchPage,
+  resolveTargetPage,
 } from './workbench/data.js'
 import TopBar from './workbench/TopBar.jsx'
 import RightSidebar from './workbench/RightSidebar.jsx'
@@ -30,7 +32,13 @@ export default function App() {
     outline: 0,
     settings: 0,
   })
+  const [pageState, setPageState] = useState({
+    chapters: { selectedPath: null, dirty: false },
+    outline: { selectedPath: null, dirty: false },
+    settings: { selectedPath: null, dirty: false },
+  })
   const activeTaskIdRef = useRef(null)
+  const lastActionRef = useRef(null)
 
   const loadSummary = useCallback(async () => {
     try {
@@ -102,12 +110,20 @@ export default function App() {
                           : `${task.action?.label || '任务'} 执行失败。`,
                       reason:
                         task.status === 'completed'
-                          ? task.result?.summary || '任务已完成并刷新相关页面。'
+                          ? buildCompletionNotice({
+                              activePage,
+                              actionType: task.action?.type,
+                              summary: task.result?.summary,
+                            }).message
                           : task.error || '任务执行失败，请查看任务日志。',
                       scope: {
                         page: sidebarContext?.page ?? null,
                         selectedPath: sidebarContext?.selectedPath ?? null,
                       },
+                      navigateTo:
+                        task.status === 'completed' && activePage !== resolveTargetPage(task.action?.type)
+                          ? resolveTargetPage(task.action?.type)
+                          : null,
                     },
                   ]
                 : prev.chatMessages,
@@ -127,7 +143,18 @@ export default function App() {
       unsubscribe()
       setConnected(false)
     }
-  }, [loadSummary, sidebarContext, triggerWorkspaceRefresh])
+  }, [activePage, loadSummary, sidebarContext, triggerWorkspaceRefresh])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (sidebarContext.dirty) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [sidebarContext.dirty])
 
   useEffect(() => {
     return () => {
@@ -163,23 +190,39 @@ export default function App() {
     [chatPending, sidebarContext, workbenchState.chatMessages, workbenchState.currentTask, workbenchState.suggestedActions],
   )
 
+  const handlePageStateChange = useCallback((page, state) => {
+    setPageState(prev => ({ ...prev, [page]: { ...prev[page], ...state } }))
+  }, [])
+
+  const handleSelectPage = useCallback((page) => {
+    if (sidebarContext.dirty && !window.confirm('当前页面有未保存的修改，确定要离开吗？')) {
+      return
+    }
+    setWorkbenchState(prev => ({ ...prev, page }))
+  }, [sidebarContext.dirty])
+
+  const handleRetryAction = useCallback(() => {
+    if (lastActionRef.current) {
+      handleRunAction(lastActionRef.current)
+    }
+  }, [handleRunAction])
+
+  const handleNavigateToPage = useCallback((page) => {
+    setWorkbenchState(prev => ({ ...prev, page }))
+  }, [])
+
   const pageProps = {
     summary: workbenchState.summary,
     loading,
     loadError,
     onRetry: loadSummary,
     onContextChange: setSidebarContext,
+    onPageStateChange: handlePageStateChange,
+    cachedSelectedPath: pageState[activePage]?.selectedPath ?? null,
   }
 
   const triggerWorkspaceRefresh = useCallback((actionType) => {
-    const targetPage =
-      actionType === 'write_chapter' || actionType === 'review_chapter'
-        ? 'chapters'
-        : actionType === 'plan_outline'
-          ? 'outline'
-          : actionType === 'inspect_setting'
-            ? 'settings'
-            : null
+    const targetPage = resolveTargetPage(actionType)
 
     if (!targetPage) return
 
@@ -239,6 +282,7 @@ export default function App() {
       if (!action) return
       const taskName = action.label || '执行动作'
 
+      lastActionRef.current = action
       setWorkbenchState(prev => ({
         ...prev,
         currentTask: {
@@ -304,7 +348,7 @@ export default function App() {
       <TopBar
         model={topBarModel}
         connected={connected}
-        onSelectPage={page => setWorkbenchState(prev => ({ ...prev, page }))}
+        onSelectPage={handleSelectPage}
       />
 
       <div className="workbench-body">
@@ -319,6 +363,8 @@ export default function App() {
           model={sidebarModel}
           onSendMessage={handleSendMessage}
           onRunAction={handleRunAction}
+          onRetryAction={handleRetryAction}
+          onNavigateToPage={handleNavigateToPage}
         />
       </div>
     </div>
