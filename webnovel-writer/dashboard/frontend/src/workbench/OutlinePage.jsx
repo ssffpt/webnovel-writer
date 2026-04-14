@@ -14,6 +14,7 @@ function flattenFiles(nodes = []) {
 }
 
 function inferOutlineKind(path = '') {
+  if (!path) return '大纲文件'
   if (path.includes('总纲')) return '总纲'
   if (path.includes('卷')) return '卷纲'
   if (path.includes('章') || path.includes('章节')) return '章纲'

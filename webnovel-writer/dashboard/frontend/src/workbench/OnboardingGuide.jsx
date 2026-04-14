@@ -42,8 +42,7 @@ export function resetGuideDone() {
 }
 
 export default function OnboardingGuide({ step, onNext, onPrev, onClose, targets }) {
-  const [targetRect, setTargetRect] = useState(null)
-  const [bubblePos, setBubblePos] = useState({ top: 0, left: 0, placement: 'below' })
+  const [bubblePos, setBubblePos] = useState({ top: 0, left: 0, placement: 'center' })
 
   const currentStep = STEPS[step - 1]
   if (!currentStep) return null
@@ -54,7 +53,6 @@ export default function OnboardingGuide({ step, onNext, onPrev, onClose, targets
   // Recalculate target position
   useLayoutEffect(() => {
     if (!currentStep.target || !targets) {
-      setTargetRect(null)
       setBubblePos({ top: window.innerHeight / 2, left: window.innerWidth / 2, placement: 'center' })
       return
     }
@@ -63,8 +61,6 @@ export default function OnboardingGuide({ step, onNext, onPrev, onClose, targets
     if (!el) return
 
     const rect = el.getBoundingClientRect()
-    setTargetRect(rect)
-
     const bubbleWidth = 380
     const bubbleHeight = 200
     const gap = 12
@@ -119,13 +115,16 @@ export default function OnboardingGuide({ step, onNext, onPrev, onClose, targets
   }, [step, currentStep.target, targets])
 
   return (
-    <div className="onboarding-overlay" onClick={handleSkip}>
-      {/* Step indicator */}
+    <>
+      {/* Semi-transparent backdrop — z-index below highlighted elements but above page */}
+      <div className="onboarding-overlay" />
+
+      {/* Step indicator — z-index above everything */}
       <div className="onboarding-step-indicator">
         {step} / {STEPS.length}
       </div>
 
-      {/* Bubble */}
+      {/* Bubble — z-index above highlighted elements so buttons are always clickable */}
       <div
         className={`onboarding-bubble onboarding-bubble--${bubblePos.placement}`}
         style={{
@@ -133,7 +132,6 @@ export default function OnboardingGuide({ step, onNext, onPrev, onClose, targets
           left: bubblePos.left,
           position: currentStep.target ? 'absolute' : 'fixed',
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         <h3 className="onboarding-bubble-title">{currentStep.title}</h3>
         <p className="onboarding-bubble-desc">{currentStep.description}</p>
@@ -157,6 +155,6 @@ export default function OnboardingGuide({ step, onNext, onPrev, onClose, targets
           <div className={`onboarding-bubble-arrow onboarding-bubble-arrow--${bubblePos.placement}`} />
         )}
       </div>
-    </div>
+    </>
   )
 }

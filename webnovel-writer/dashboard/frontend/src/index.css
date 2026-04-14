@@ -1151,14 +1151,13 @@ body {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
 }
 
 .onboarding-highlight {
   position: relative !important;
   z-index: 10001 !important;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6) !important;
-  border-radius: 4px;
 }
 
 .onboarding-step-indicator {
