@@ -101,22 +101,6 @@ def build_chat_response(message: str, context: dict[str, Any] | None = None) -> 
         }
         reply = "我已识别为大纲规划需求。"
         reason = "消息中包含规划/卷纲/章纲等关键词，优先匹配大纲规划动作。"
-    elif any(keyword in text for keyword in ("审查", "检查章节")):
-        action = {
-            "type": "review_chapter",
-            "label": "审查当前章节",
-            "params": {"path": selected_path},
-        }
-        reply = "我已识别为章节审查需求。"
-        reason = "消息中包含审查/检查章节等关键词，优先匹配章节审查动作。"
-    elif any(keyword in text for keyword in ("写", "生成章节", "续写")):
-        action = {
-            "type": "write_chapter",
-            "label": "生成当前章节",
-            "params": {"path": selected_path},
-        }
-        reply = "我已识别为章节写作需求。"
-        reason = "消息中包含写/生成章节/续写等关键词，优先匹配章节写作动作。"
     elif any(keyword in text for keyword in ("设定", "人物", "世界观")):
         action = {
             "type": "inspect_setting",
@@ -125,6 +109,22 @@ def build_chat_response(message: str, context: dict[str, Any] | None = None) -> 
         }
         reply = "我已识别为设定检查需求。"
         reason = "消息中包含设定/人物/世界观等关键词，优先匹配设定检查动作。"
+    elif any(keyword in text for keyword in ("审查", "检查章节", "检查")):
+        action = {
+            "type": "review_chapter",
+            "label": "审查当前章节",
+            "params": {"path": selected_path},
+        }
+        reply = "我已识别为章节审查需求。"
+        reason = "消息中包含审查/检查等关键词，优先匹配章节审查动作。"
+    elif any(keyword in text for keyword in ("写", "生成章节", "续写")):
+        action = {
+            "type": "write_chapter",
+            "label": "生成当前章节",
+            "params": {"path": selected_path},
+        }
+        reply = "我已识别为章节写作需求。"
+        reason = "消息中包含写/生成章节/续写等关键词，优先匹配章节写作动作。"
     elif text in {"继续", "帮我继续", "继续吧", "继续一下"}:
         if page == "outline":
             action = {
