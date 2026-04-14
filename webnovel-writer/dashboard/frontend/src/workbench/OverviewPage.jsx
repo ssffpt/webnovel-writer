@@ -1,6 +1,6 @@
 import { buildOverviewModel } from './data.js'
 
-export default function OverviewPage({ summary, loading, loadError, onRetry }) {
+export default function OverviewPage({ summary, loading, loadError, onRetry, onRestartGuide }) {
   const model = buildOverviewModel(summary)
 
   if (loading) {
@@ -24,6 +24,7 @@ export default function OverviewPage({ summary, loading, loadError, onRetry }) {
       <div className="page-header">
         <h2>总览</h2>
         <span className="card-badge badge-blue">Phase 1</span>
+        <button type="button" className="workbench-nav-button" onClick={onRestartGuide} style={{ marginLeft: 'auto', fontSize: '12px' }}>重新查看引导</button>
       </div>
 
       <div className="workbench-grid">

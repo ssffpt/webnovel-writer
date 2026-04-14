@@ -1142,3 +1142,109 @@ body {
   font-size: 13px;
   color: var(--text-sub);
 }
+
+/* ---------------------------------------------------------------------------
+   Onboarding guide
+   --------------------------------------------------------------------------- */
+
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: transparent;
+}
+
+.onboarding-highlight {
+  position: relative !important;
+  z-index: 10001 !important;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6) !important;
+  border-radius: 4px;
+}
+
+.onboarding-step-indicator {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 10002;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+
+.onboarding-bubble {
+  z-index: 10002;
+  width: 380px;
+  max-width: calc(100vw - 24px);
+  background: var(--bg-card);
+  border: 3px solid var(--border-main);
+  box-shadow: var(--shadow-main);
+  padding: 20px;
+  font-family: var(--font-body);
+}
+
+.onboarding-bubble--center {
+  position: fixed;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%);
+}
+
+.onboarding-bubble-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 10px;
+}
+
+.onboarding-bubble-desc {
+  font-size: 14px;
+  color: var(--text-sub);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+.onboarding-bubble-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.onboarding-skip-button {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-mute);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.onboarding-skip-button:hover {
+  color: var(--text-main);
+}
+
+.onboarding-bubble-arrow {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--bg-card);
+  border: 3px solid var(--border-main);
+  transform: rotate(45deg);
+}
+
+.onboarding-bubble-arrow--below {
+  top: -9px;
+  left: 40px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.onboarding-bubble-arrow--above {
+  bottom: -9px;
+  left: 40px;
+  border-left: none;
+  border-top: none;
+}

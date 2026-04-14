@@ -16,6 +16,7 @@ import OverviewPage from './workbench/OverviewPage.jsx'
 import ChapterPage from './workbench/ChapterPage.jsx'
 import OutlinePage from './workbench/OutlinePage.jsx'
 import SettingPage from './workbench/SettingPage.jsx'
+import OnboardingGuide, { hasGuideCompleted, resetGuideDone } from './workbench/OnboardingGuide.jsx'
 
 export default function App() {
   const [workbenchState, setWorkbenchState] = useState(() => createInitialWorkbenchState())
@@ -40,6 +41,10 @@ export default function App() {
   })
   const activeTaskIdRef = useRef(null)
   const lastActionRef = useRef(null)
+  const topBarRef = useRef(null)
+  const mainRef = useRef(null)
+  const sidebarRef = useRef(null)
+  const [guideStep, setGuideStep] = useState(() => hasGuideCompleted() ? 0 : 1)
 
   // --- Derived values (must be defined before useEffects that reference them) ---
 
@@ -170,6 +175,14 @@ export default function App() {
 
   const handleNavigateToPage = useCallback((page) => {
     setWorkbenchState(prev => ({ ...prev, page }))
+  }, [])
+
+  const handleGuideNext = useCallback(() => setGuideStep(s => s + 1), [])
+  const handleGuidePrev = useCallback(() => setGuideStep(s => Math.max(1, s - 1)), [])
+  const handleGuideClose = useCallback(() => setGuideStep(0), [])
+  const handleRestartGuide = useCallback(() => {
+    resetGuideDone()
+    setGuideStep(1)
   }, [])
 
   // --- Effects ---
@@ -353,34 +366,51 @@ export default function App() {
     onContextChange: setSidebarContext,
     onPageStateChange: handlePageStateChange,
     cachedSelectedPath: pageState[activePage]?.selectedPath ?? null,
+    onRestartGuide: handleRestartGuide,
   }
+
+  const guideTargets = { topbar: topBarRef, main: mainRef, sidebar: sidebarRef }
 
   // --- Render ---
 
   return (
     <div className="workbench-shell">
-      <TopBar
-        model={topBarModel}
-        connected={connected}
-        onSelectPage={handleSelectPage}
-      />
+      <div ref={topBarRef}>
+        <TopBar
+          model={topBarModel}
+          connected={connected}
+          onSelectPage={handleSelectPage}
+        />
+      </div>
 
       <div className="workbench-body">
-        <div className="workbench-main">
+        <div ref={mainRef} className="workbench-main">
           {activePage === 'overview' && <OverviewPage {...pageProps} />}
           {activePage === 'chapters' && <ChapterPage {...pageProps} reloadToken={reloadKeys.chapters} />}
           {activePage === 'outline' && <OutlinePage {...pageProps} reloadToken={reloadKeys.outline} />}
           {activePage === 'settings' && <SettingPage {...pageProps} reloadToken={reloadKeys.settings} />}
         </div>
 
-        <RightSidebar
-          model={sidebarModel}
-          onSendMessage={handleSendMessage}
-          onRunAction={handleRunAction}
-          onRetryAction={handleRetryAction}
-          onNavigateToPage={handleNavigateToPage}
-        />
+        <div ref={sidebarRef}>
+          <RightSidebar
+            model={sidebarModel}
+            onSendMessage={handleSendMessage}
+            onRunAction={handleRunAction}
+            onRetryAction={handleRetryAction}
+            onNavigateToPage={handleNavigateToPage}
+          />
+        </div>
       </div>
+
+      {guideStep > 0 && guideStep <= 4 && (
+        <OnboardingGuide
+          step={guideStep}
+          onNext={handleGuideNext}
+          onPrev={handleGuidePrev}
+          onClose={handleGuideClose}
+          targets={guideTargets}
+        />
+      )}
     </div>
   )
 }
