@@ -169,8 +169,8 @@ export default function OutlinePage({ loading, loadError, onRetry, onContextChan
             </div>
             <div className="chapter-editor-actions">
               <span className="card-badge badge-cyan">{selectedKind}</span>
-              <span className={`card-badge ${dirty ? 'badge-amber' : 'badge-blue'}`}>
-                {dirty ? '未保存' : '已同步'}
+              <span className={`card-badge ${saveState === 'saved' ? 'badge-green' : dirty ? 'badge-amber' : 'badge-blue'}`}>
+                {saveState === 'saved' ? '已保存' : dirty ? '未保存' : '已同步'}
               </span>
               <button
                 type="button"
