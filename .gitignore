@@ -46,3 +46,7 @@ _v52_*.txt
 claude_inventory.csv
 *_utf8_sample.txt
 .omc/
+
+# Qoder local data (but track repowiki)
+.qoder/agents/
+.qoder/skills/
