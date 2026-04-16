@@ -85,6 +85,7 @@ export default function App() {
   const [showWizard, setShowWizard] = useState(false)
   const [wizardPrefill, setWizardPrefill] = useState(null)
   const [aiOpen, setAiOpen] = useState(false)
+  const [focusModeActive, setFocusModeActive] = useState(false)
   const [recentActivities, setRecentActivities] = useState([])
   const [conflictDialog, setConflictDialog] = useState({ visible: false, file: null })
   const [genres, setGenres] = useState([])
@@ -447,6 +448,10 @@ export default function App() {
     }
   }, [sidebarContext])
 
+  const handleFocusModeChange = useCallback((active) => {
+    setFocusModeActive(active)
+  }, [])
+
   const pageProps = {
     summary: workbenchState.summary,
     loading,
@@ -461,6 +466,7 @@ export default function App() {
     onCreateNew: handleCreateNew,
     onNavigateToPage: handleNavigateToPage,
     onRunAction: handleRunAction,
+    onFocusModeChange: handleFocusModeChange,
   }
 
   // --- Render ---
@@ -488,19 +494,21 @@ export default function App() {
         </div>
       </div>
 
-      {/* AIAssistant floating component */}
-      <AIAssistant
-        chatMessages={workbenchState.chatMessages}
-        suggestedActions={workbenchState.suggestedActions}
-        currentTask={aiAssistantModel.currentTask}
-        chatPending={chatPending}
-        onSendMessage={handleSendMessage}
-        onRunAction={handleRunAction}
-        onRetryAction={handleRetryAction}
-        onNavigateToPage={handleNavigateToPage}
-        visible={aiOpen}
-        onToggle={() => setAiOpen(prev => !prev)}
-      />
+      {/* AIAssistant floating component — hidden in focus mode */}
+      {!focusModeActive && (
+        <AIAssistant
+          chatMessages={workbenchState.chatMessages}
+          suggestedActions={workbenchState.suggestedActions}
+          currentTask={aiAssistantModel.currentTask}
+          chatPending={chatPending}
+          onSendMessage={handleSendMessage}
+          onRunAction={handleRunAction}
+          onRetryAction={handleRetryAction}
+          onNavigateToPage={handleNavigateToPage}
+          visible={aiOpen}
+          onToggle={() => setAiOpen(prev => !prev)}
+        />
+      )}
 
       {/* CreateWizard */}
       {showWizard && (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchFileTree, readFile, saveFile } from '../api.js'
 
 function flattenFiles(nodes = []) {
@@ -13,7 +13,16 @@ function flattenFiles(nodes = []) {
   return files
 }
 
-export default function ChapterPage({ loading, loadError, onRetry, onContextChange, onPageStateChange, cachedSelectedPath = null, reloadToken = 0 }) {
+export default function ChapterPage({
+  loading,
+  loadError,
+  onRetry,
+  onContextChange,
+  onPageStateChange,
+  cachedSelectedPath = null,
+  reloadToken = 0,
+  onFocusModeChange,
+}) {
   const [treeLoading, setTreeLoading] = useState(true)
   const [treeError, setTreeError] = useState('')
   const [chapterFiles, setChapterFiles] = useState([])
@@ -22,7 +31,32 @@ export default function ChapterPage({ loading, loadError, onRetry, onContextChan
   const [dirty, setDirty] = useState(false)
   const [saveState, setSaveState] = useState('idle')
   const [loadContentError, setLoadContentError] = useState('')
+  const [focusMode, setFocusMode] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
+  // Word count (Chinese: count non-whitespace characters)
+  const wordCount = useMemo(() => draft.replace(/\s/g, '').length, [draft])
+
+  // Reverse order chapter list (newest first)
+  const reversedFiles = useMemo(() => chapterFiles.slice().reverse(), [chapterFiles])
+
+  // Next chapter number for "写第N章" button
+  const nextChapterNum = chapterFiles.length + 1
+
+  // --- ESC to exit focus mode ---
+  useEffect(() => {
+    if (!focusMode) return
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        setFocusMode(false)
+        onFocusModeChange?.(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [focusMode, onFocusModeChange])
+
+  // --- File tree loading ---
   useEffect(() => {
     let active = true
     async function loadTree() {
@@ -46,17 +80,15 @@ export default function ChapterPage({ loading, loadError, onRetry, onContextChan
       }
     }
     loadTree()
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [reloadToken])
 
+  // --- File content loading ---
   useEffect(() => {
     if (!selectedPath) {
       setDraft('')
       return
     }
-
     let active = true
     async function loadContent() {
       setLoadContentError('')
@@ -74,11 +106,10 @@ export default function ChapterPage({ loading, loadError, onRetry, onContextChan
       }
     }
     loadContent()
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [reloadToken, selectedPath])
 
+  // --- Context sync ---
   useEffect(() => {
     onContextChange?.({
       page: 'chapters',
@@ -116,13 +147,43 @@ export default function ChapterPage({ loading, loadError, onRetry, onContextChan
     }
   }
 
-  return (
-    <section className="workbench-page chapter-page-shell">
-      <div className="page-header">
-        <h2>章节</h2>
-        <span className="card-badge badge-green">真实工作区</span>
-      </div>
+  const handleToggleFocusMode = useCallback(() => {
+    setFocusMode(prev => {
+      const next = !prev
+      onFocusModeChange?.(next)
+      return next
+    })
+  }, [onFocusModeChange])
 
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => !prev)
+  }, [])
+
+  // --- Empty state ---
+  if (!loading && !treeLoading && !loadError && !treeError && chapterFiles.length === 0) {
+    return (
+      <section className="chapter-page-shell chapter-page-empty">
+        <div className="chapter-empty-sidebar">
+          <p className="empty-text">还没有章节</p>
+        </div>
+        <div className="chapter-empty-main">
+          <div className="chapter-empty-prompt">
+            <p>开始写第1章吧！</p>
+            <button
+              type="button"
+              className="workbench-primary-button"
+              onClick={() => setSelectedPath(null)}
+            >
+              ＋ 写第1章
+            </button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className={`chapter-page-shell${focusMode ? ' focus-mode' : ''}${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       {(loading || treeLoading) && <div className="workbench-panel">正在加载章节工作区…</div>}
       {(loadError || treeError) && (
         <div className="workbench-panel">
@@ -132,34 +193,73 @@ export default function ChapterPage({ loading, loadError, onRetry, onContextChan
       )}
 
       <div className="chapter-workspace">
-        <aside className="workbench-panel chapter-list-panel">
-          <h3>章节列表</h3>
-          {chapterFiles.length === 0 ? (
-            <p className="empty-text">正文目录下暂无章节文件。</p>
-          ) : (
-            <div className="chapter-file-list">
-              {chapterFiles.map(file => (
-                <button
-                  key={file.path}
-                  type="button"
-                  className={`chapter-file-button ${selectedPath === file.path ? 'active' : ''}`}
-                  onClick={() => handleSelectFile(file.path)}
-                >
-                  <span>{file.name}</span>
-                  <span className="chapter-file-meta">{file.size ?? 0} B</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </aside>
+        {/* Left sidebar — 140px collapsible */}
+        {!focusMode && (
+          <aside className={`chapter-list-panel${sidebarCollapsed ? ' collapsed' : ''}`}>
+            {!sidebarCollapsed ? (
+              <>
+                <div className="chapter-list-header">
+                  <h3>章节</h3>
+                  <button
+                    type="button"
+                    className="chapter-sidebar-toggle"
+                    onClick={handleToggleSidebar}
+                    title="收起侧栏"
+                  >
+                    ◀
+                  </button>
+                </div>
+                <div className="chapter-file-list">
+                  {reversedFiles.map(file => (
+                    <button
+                      key={file.path}
+                      type="button"
+                      className={`chapter-file-button ${selectedPath === file.path ? 'active' : ''}`}
+                      onClick={() => handleSelectFile(file.path)}
+                    >
+                      <span>{file.name}</span>
+                      <span className="chapter-file-meta">{file.size ?? 0} B</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="chapter-list-footer">
+                  <button
+                    type="button"
+                    className="workbench-primary-button chapter-add-button"
+                    onClick={() => setSelectedPath(null)}
+                  >
+                    ＋ 写第{nextChapterNum}章
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="chapter-sidebar-toggle expand"
+                onClick={handleToggleSidebar}
+                title="展开侧栏"
+              >
+                ▶
+              </button>
+            )}
+          </aside>
+        )}
 
-        <div className="workbench-panel chapter-editor-panel">
+        {/* Right editor */}
+        <div className="chapter-editor-panel">
           <div className="chapter-editor-header">
-            <div>
-              <h3>{selectedFile?.name || '未选择章节'}</h3>
-              <p className="empty-text">{selectedPath || '请先从左侧选择章节文件'}</p>
+            <div className="chapter-editor-path">
+              {selectedPath || '未选择章节'}
             </div>
             <div className="chapter-editor-actions">
+              <button
+                type="button"
+                className={`chapter-focus-button${focusMode ? ' active' : ''}`}
+                onClick={handleToggleFocusMode}
+                title={focusMode ? '退出专注模式 (ESC)' : '专注模式'}
+              >
+                {focusMode ? '退出专注' : '专注'}
+              </button>
               <span className={`card-badge ${saveState === 'saved' ? 'badge-green' : dirty ? 'badge-amber' : 'badge-blue'}`}>
                 {saveState === 'saved' ? '已保存' : dirty ? '未保存' : '已同步'}
               </span>
@@ -174,11 +274,6 @@ export default function ChapterPage({ loading, loadError, onRetry, onContextChan
             </div>
           </div>
 
-          <div className="chapter-placeholder-actions">
-            <button type="button" className="workbench-nav-button" disabled>按大纲生成</button>
-            <button type="button" className="workbench-nav-button" disabled>审查本章</button>
-          </div>
-
           {loadContentError ? <p className="error-text">{loadContentError}</p> : null}
 
           <textarea
@@ -191,6 +286,11 @@ export default function ChapterPage({ loading, loadError, onRetry, onContextChan
             placeholder="在这里编辑章节正文…"
             disabled={!selectedPath}
           />
+
+          <div className="chapter-status-bar">
+            <span className="chapter-word-count">{wordCount} 字</span>
+            {selectedFile && <span className="chapter-file-meta">{selectedFile.name}</span>}
+          </div>
         </div>
       </div>
     </section>
