@@ -67,7 +67,7 @@
 
 需扩展 `make_project()` 以支持不同测试场景（见下方辅助函数扩展）。
 
-- [ ] **Step 1: 创建测试文件**
+- [x] **Step 1: 创建测试文件**
 
 测试用例覆盖：
 
@@ -119,12 +119,12 @@ def make_project(tmp_path: Path, *, title="测试小说", genre="玄幻",
     return project_root
 ```
 
-- [ ] **Step 2: 运行测试（预期全红）**
+- [x] **Step 2: 运行测试（预期全红）**
 
 Run: `cd webnovel-writer && python -m pytest dashboard/tests/test_new_apis.py -v`
 Expected: 全部 FAILED（路由尚不存在），确认测试本身语法无误
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add dashboard/tests/test_new_apis.py
@@ -185,13 +185,13 @@ GF_KEY_MAP = {
 # "无金手指" → key="none"
 ```
 
-- [ ] **Step 1: 创建 `genre_service.py`**
+- [x] **Step 1: 创建 `genre_service.py`**
 
 创建 `webnovel-writer/dashboard/genre_service.py`，实现两个纯函数：
 - `list_genres(package_root: Path) -> dict` — 合并三个数据源，返回 `{ genres: [{ key, label, template, profile_id }, ...] }`
 - `list_golden_finger_types(package_root: Path) -> dict` — 解析 golden-finger-templates.md，返回 `{ types: [{ key, label }, ...] }`
 
-- [ ] **Step 2: 在 `app.py` 中添加路由**
+- [x] **Step 2: 在 `app.py` 中添加路由**
 
 在 `app.py` 导入区新增 `from .genre_service import list_genres, list_golden_finger_types`。
 
@@ -211,12 +211,12 @@ def api_golden_finger_types():
     return list_golden_finger_types(_PACKAGE_ROOT)
 ```
 
-- [ ] **Step 3: 运行测试（genres + gf-types 应变绿）**
+- [x] **Step 3: 运行测试（genres + gf-types 应变绿）**
 
 Run: `cd webnovel-writer && python -m pytest dashboard/tests/test_new_apis.py::test_genres dashboard/tests/test_new_apis.py::test_golden_finger_types -v`
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add dashboard/genre_service.py dashboard/app.py
@@ -270,7 +270,7 @@ def _run_init_project(project_dir: str, title: str, genre: str, **kwargs) -> sub
 
 注意：`app.py` 中 `_get_db()` 每次请求都新建 SQLite 连接（不缓存），所以切换项目后无需"重连 index.db"，只需更新 `_project_root` 和重启 FileWatcher。
 
-- [ ] **Step 1: 创建 `project_service.py`**
+- [x] **Step 1: 创建 `project_service.py`**
 
 创建 `webnovel-writer/dashboard/project_service.py`，实现三个函数：
 - `create_project(payload: dict, package_root: Path) -> dict` — 生成 project_dir，subprocess 调用 init_project.py，注册到 workspaces.json，返回 {success, project_root, state}
@@ -279,7 +279,7 @@ def _run_init_project(project_dir: str, title: str, genre: str, **kwargs) -> sub
 
 注意 watcher 停止/重启逻辑留在 app.py 路由层，不侵入 service 层。
 
-- [ ] **Step 2: 在 `app.py` 中添加 3 个路由**
+- [x] **Step 2: 在 `app.py` 中添加 3 个路由**
 
 ```python
 from .project_service import create_project, list_projects, switch_project
@@ -313,12 +313,12 @@ def api_switch_project(payload: dict):
     return result
 ```
 
-- [ ] **Step 3: 运行测试（project 相关应变绿）**
+- [x] **Step 3: 运行测试（project 相关应变绿）**
 
 Run: `cd webnovel-writer && python -m pytest dashboard/tests/test_new_apis.py -k "project" -v`
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add dashboard/project_service.py dashboard/app.py
@@ -344,7 +344,7 @@ git commit -m "feat(api): add project create/list/switch APIs"
 - `FileWatcher` 检测到文件变更时追加一条 `file_modified` 活动
 - 在 app.py 中通过调用 `_recent_activities.append()` 实现，不需要修改 TaskService 和 FileWatcher 的接口
 
-- [ ] **Step 1: 在 `workbench_service.py` 中新增 `build_outline_tree()`**
+- [x] **Step 1: 在 `workbench_service.py` 中新增 `build_outline_tree()`**
 
 实现逻辑：
 1. 扫描 `大纲/` 目录下所有 .md 文件 → `files` 列表
@@ -354,7 +354,7 @@ git commit -m "feat(api): add project create/list/switch APIs"
 5. 用正则 `r"第(\d+)卷"` 从文件名提取卷号
 6. 空项目（大纲目录不存在）返回空 files + 根据 target_chapters 计算的 volumes
 
-- [ ] **Step 2: 在 `app.py` 中新增路由和活动缓存**
+- [x] **Step 2: 在 `app.py` 中新增路由和活动缓存**
 
 ```python
 from .workbench_service import build_outline_tree  # 新增 import
@@ -374,12 +374,12 @@ def api_recent_activity():
 
 在 TaskService 的 `mark_completed`/`mark_failed` 后追加活动记录（在路由层或 app.py 中 hook）。
 
-- [ ] **Step 3: 运行测试（全部应变绿）**
+- [x] **Step 3: 运行测试（全部应变绿）**
 
 Run: `cd webnovel-writer && python -m pytest dashboard/tests/test_new_apis.py -v`
 Expected: 全部 PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add dashboard/workbench_service.py dashboard/app.py
