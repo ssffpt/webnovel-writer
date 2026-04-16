@@ -20,7 +20,9 @@ from fastapi.staticfiles import StaticFiles
 from .path_guard import safe_resolve
 from .models import TASK_IDLE_PAYLOAD
 from .task_service import TaskService
-from .workbench_service import build_chat_response, load_project_summary, save_workspace_file
+from .genre_service import list_genres, list_golden_finger_types
+from .project_service import create_project, list_projects, switch_project
+from .workbench_service import build_chat_response, build_outline_tree, load_project_summary, save_workspace_file
 from .watcher import FileWatcher
 
 # ---------------------------------------------------------------------------
@@ -29,6 +31,8 @@ from .watcher import FileWatcher
 _project_root: Path | None = None
 _watcher = FileWatcher()
 _task_service = TaskService()
+_PACKAGE_ROOT = Path(__file__).resolve().parent.parent  # webnovel-writer/ 包根目录
+_recent_activities: list[dict] = []
 
 STATIC_DIR = Path(__file__).parent / "frontend" / "dist"
 
@@ -88,6 +92,74 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
     @app.get("/api/workbench/summary")
     def workbench_summary():
         return load_project_summary(_get_project_root())
+
+    def _restart_watcher():
+        """重启 FileWatcher 监控当前项目。"""
+        _watcher.stop()
+        if _project_root:
+            webnovel = _project_root / ".webnovel"
+            if webnovel.is_dir():
+                try:
+                    loop = asyncio.get_running_loop()
+                    _watcher.start(webnovel, loop)
+                except RuntimeError:
+                    pass  # 无事件循环（如测试环境），跳过 watcher
+
+    # ===========================================================
+    # API：题材与金手指
+    # ===========================================================
+
+    @app.get("/api/genres")
+    def api_genres():
+        return list_genres(_PACKAGE_ROOT)
+
+    @app.get("/api/golden-finger-types")
+    def api_golden_finger_types():
+        return list_golden_finger_types(_PACKAGE_ROOT)
+
+    # ===========================================================
+    # API：项目管理
+    # ===========================================================
+
+    @app.post("/api/project/create")
+    def api_create_project(payload: dict):
+        global _project_root
+        title = payload.get("title")
+        if not title or not isinstance(title, str) or not title.strip():
+            raise HTTPException(400, "title 必填")
+        result = create_project(payload, _PACKAGE_ROOT)
+        if result.get("success"):
+            _project_root = Path(result["project_root"])
+            _restart_watcher()
+        return result
+
+    @app.get("/api/projects")
+    def api_list_projects():
+        return list_projects()
+
+    @app.post("/api/project/switch")
+    def api_switch_project(payload: dict):
+        global _project_root
+        target = payload.get("path", "")
+        current = _project_root if _project_root else Path(".")
+        result = switch_project(target, current)
+        if not result.get("success"):
+            raise HTTPException(400, result.get("error", "切换失败"))
+        _project_root = Path(result["project_root"])
+        _restart_watcher()
+        return result
+
+    # ===========================================================
+    # API：大纲树与最近动态
+    # ===========================================================
+
+    @app.get("/api/outline/tree")
+    def api_outline_tree():
+        return build_outline_tree(_get_project_root())
+
+    @app.get("/api/recent-activity")
+    def api_recent_activity():
+        return {"activities": list(_recent_activities[-50:])}
 
     # ===========================================================
     # API：实体数据库（index.db 只读查询）
