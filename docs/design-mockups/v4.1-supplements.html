@@ -1,0 +1,348 @@
+<h2>v4.1 设计稿：补全缺失状态</h2>
+<p class="subtitle">补充：创建向导(3步)、章节页空状态、每页AI浮动按钮、未完成设置状态</p>
+
+<!-- ==================== 创建向导 第1步 ==================== -->
+<div class="mockup" style="margin-bottom:16px;">
+  <div class="mockup-header">🧙 创建向导 — 第1步：基本信息</div>
+  <div class="mockup-body" style="font-size:12px;">
+    <!-- 背景页面（总览页空状态，变暗） -->
+    <div style="opacity:0.3;pointer-events:none;min-height:60px;padding:10px;text-align:center;font-size:11px;color:#888;">
+      总览页空状态（背景变暗）
+    </div>
+
+    <!-- 向导弹窗 -->
+    <div style="background:#1a1a2e;border-radius:12px;border:1px solid #333;max-width:520px;margin:0 auto;position:relative;">
+      <!-- 步骤指示器 -->
+      <div style="padding:16px 20px;border-bottom:1px solid #333;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="background:#2d5a2d;color:#6bcf6b;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;">1</div>
+          <div style="color:#6bcf6b;font-weight:bold;font-size:13px;">基本信息</div>
+          <div style="flex:1;height:1px;background:#333;"></div>
+          <div style="background:#333;color:#888;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;">2</div>
+          <div style="color:#888;font-size:13px;">主角设定</div>
+          <div style="flex:1;height:1px;background:#333;"></div>
+          <div style="background:#333;color:#888;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;">3</div>
+          <div style="color:#888;font-size:13px;">确认创建</div>
+        </div>
+      </div>
+
+      <div style="padding:20px;">
+        <div style="margin-bottom:16px;">
+          <label style="display:block;color:#888;font-size:11px;margin-bottom:4px;">书名 *</label>
+          <input class="mock-input" style="width:100%;padding:8px 12px;background:#0d0d1a;border:1px solid #444;border-radius:4px;color:#fff;font-size:13px;box-sizing:border-box;" placeholder="例如：修仙归来当奶爸" value="我在异界开挂修仙">
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block;color:#888;font-size:11px;margin-bottom:4px;">题材类型 *（可多选）</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <span style="background:#2d5a2d;color:#6bcf6b;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">修仙 ✓</span>
+            <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">都市</span>
+            <span style="background:#2d5a2d;color:#6bcf6b;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">系统流 ✓</span>
+            <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">古言</span>
+            <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">规则怪谈</span>
+            <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">悬疑推理</span>
+            <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">高武</span>
+            <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">现实题材</span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-bottom:16px;">
+          <div style="flex:1;">
+            <label style="display:block;color:#888;font-size:11px;margin-bottom:4px;">目标字数</label>
+            <input class="mock-input" style="width:100%;padding:8px 12px;background:#0d0d1a;border:1px solid #444;border-radius:4px;color:#fff;font-size:13px;box-sizing:border-box;" value="2,000,000">
+          </div>
+          <div style="flex:1;">
+            <label style="display:block;color:#888;font-size:11px;margin-bottom:4px;">目标章节数</label>
+            <input class="mock-input" style="width:100%;padding:8px 12px;background:#0d0d1a;border:1px solid #444;border-radius:4px;color:#fff;font-size:13px;box-sizing:border-box;" value="600">
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;color:#888;font-size:11px;margin-bottom:4px;">核心卖点（可选）</label>
+          <input class="mock-input" style="width:100%;padding:8px 12px;background:#0d0d1a;border:1px solid #444;border-radius:4px;color:#fff;font-size:13px;box-sizing:border-box;" placeholder="用1-3句话描述最吸引人的地方">
+        </div>
+      </div>
+
+      <div style="padding:12px 20px;border-top:1px solid #333;display:flex;justify-content:space-between;">
+        <button class="mock-button" style="background:#333;color:#888;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;">取消</button>
+        <button class="mock-button" style="background:#2d5a2d;color:#6bcf6b;border:none;padding:8px 20px;border-radius:4px;cursor:pointer;font-weight:bold;">下一步 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 创建向导 第2步 ==================== -->
+<div class="mockup" style="margin-bottom:16px;">
+  <div class="mockup-header">🧙 创建向导 — 第2步：主角设定</div>
+  <div class="mockup-body" style="font-size:12px;">
+    <div style="background:#1a1a2e;border-radius:12px;border:1px solid #333;max-width:520px;margin:0 auto;">
+      <div style="padding:16px 20px;border-bottom:1px solid #333;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="background:#2d5a2d;color:#6bcf6b;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</div>
+          <div style="color:#6bcf6b;font-size:13px;">基本信息</div>
+          <div style="flex:1;height:1px;background:#2d5a2d;"></div>
+          <div style="background:#2d5a2d;color:#6bcf6b;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;">2</div>
+          <div style="color:#6bcf6b;font-weight:bold;font-size:13px;">主角设定</div>
+          <div style="flex:1;height:1px;background:#333;"></div>
+          <div style="background:#333;color:#888;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;">3</div>
+          <div style="color:#888;font-size:13px;">确认创建</div>
+        </div>
+      </div>
+
+      <div style="padding:20px;">
+        <div style="margin-bottom:16px;">
+          <label style="display:block;color:#888;font-size:11px;margin-bottom:4px;">主角名字</label>
+          <input class="mock-input" style="width:100%;padding:8px 12px;background:#0d0d1a;border:1px solid #444;border-radius:4px;color:#fff;font-size:13px;box-sizing:border-box;" placeholder="你的主角叫什么？" value="叶凡">
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block;color:#888;font-size:11px;margin-bottom:4px;">金手指名称</label>
+          <input class="mock-input" style="width:100%;padding:8px 12px;background:#0d0d1a;border:1px solid #444;border-radius:4px;color:#fff;font-size:13px;box-sizing:border-box;" placeholder="如：天道系统、万物鉴定术" value="天道系统">
+        </div>
+
+        <div>
+          <label style="display:block;color:#888;font-size:11px;margin-bottom:4px;">金手指类型</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <span style="background:#2d5a2d;color:#6bcf6b;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">系统流 ✓</span>
+            <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">鉴定流</span>
+            <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">签到流</span>
+            <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">空间流</span>
+            <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">重生流</span>
+            <span style="background:#1a1a2e;border:1px dashed #6bcf6b;color:#6bcf6b;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;">无金手指</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:12px 20px;border-top:1px solid #333;display:flex;justify-content:space-between;">
+        <button class="mock-button" style="background:#333;color:#888;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;">← 上一步</button>
+        <button class="mock-button" style="background:#2d5a2d;color:#6bcf6b;border:none;padding:8px 20px;border-radius:4px;cursor:pointer;font-weight:bold;">下一步 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 创建向导 第3步 ==================== -->
+<div class="mockup" style="margin-bottom:16px;">
+  <div class="mockup-header">🧙 创建向导 — 第3步：确认创建</div>
+  <div class="mockup-body" style="font-size:12px;">
+    <div style="background:#1a1a2e;border-radius:12px;border:1px solid #333;max-width:520px;margin:0 auto;">
+      <div style="padding:16px 20px;border-bottom:1px solid #333;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="background:#2d5a2d;color:#6bcf6b;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</div>
+          <div style="color:#6bcf6b;font-size:13px;">基本信息</div>
+          <div style="flex:1;height:1px;background:#2d5a2d;"></div>
+          <div style="background:#2d5a2d;color:#6bcf6b;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</div>
+          <div style="color:#6bcf6b;font-size:13px;">主角设定</div>
+          <div style="flex:1;height:1px;background:#2d5a2d;"></div>
+          <div style="background:#2d5a2d;color:#6bcf6b;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;">3</div>
+          <div style="color:#6bcf6b;font-weight:bold;font-size:13px;">确认创建</div>
+        </div>
+      </div>
+
+      <div style="padding:20px;">
+        <h3 style="margin-bottom:12px;font-size:14px;">确认你的小说信息</h3>
+        <div style="background:#0d0d1a;border-radius:8px;padding:14px;font-size:12px;">
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;">
+            <span style="color:#888;">书名</span><span style="font-weight:bold;">我在异界开挂修仙</span>
+            <span style="color:#888;">题材</span><span>修仙 + 系统流</span>
+            <span style="color:#888;">目标字数</span><span>2,000,000</span>
+            <span style="color:#888;">目标章节</span><span>600</span>
+            <span style="color:#888;">主角</span><span>叶凡</span>
+            <span style="color:#888;">金手指</span><span>天道系统（系统流）</span>
+          </div>
+        </div>
+        <p style="color:#888;font-size:11px;margin-top:10px;">创建后会在大纲页生成基础模板文件，你可以在那里细化大纲。</p>
+      </div>
+
+      <div style="padding:12px 20px;border-top:1px solid #333;display:flex;justify-content:space-between;">
+        <button class="mock-button" style="background:#333;color:#888;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;">← 上一步</button>
+        <button class="mock-button" style="background:#2d5a2d;color:#6bcf6b;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:bold;font-size:14px;box-shadow:0 0 12px #2d5a2d;">✓ 创建项目</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 未完成设置状态 ==================== -->
+<div class="mockup" style="margin-bottom:16px;">
+  <div class="mockup-header">📋 总览页 — 未完成设置状态</div>
+  <div class="mockup-body" style="font-size:12px;">
+    <div style="display:flex;align-items:center;gap:0;padding:6px 12px;background:#1a1a2e;border-bottom:1px solid #333;">
+      <div style="display:flex;gap:0;font-size:13px;">
+        <span style="color:#fff;padding:4px 12px;border-bottom:2px solid #6bcf6b;">① 总览</span>
+        <span style="color:#888;padding:4px 12px;">② 大纲</span>
+        <span style="color:#888;padding:4px 12px;">③ 设定</span>
+        <span style="color:#888;padding:4px 12px;">④ 章节</span>
+      </div>
+      <div style="margin-left:auto;">
+        <span style="font-size:12px;color:#fff;background:#2d5a2d;padding:4px 12px;border-radius:4px;">📖 我在异界开挂修仙 ▾</span>
+      </div>
+    </div>
+
+    <div style="min-height:260px;padding:16px;">
+      <!-- 步骤引导条（起步阶段未完成） -->
+      <div style="background:#0d1a0d;border:2px solid #8a5a2d;border-radius:12px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="display:flex;align-items:center;gap:6px;background:#8a5a2d;padding:8px 16px;border-radius:8px;border:2px solid #d4a44d;">
+            <span style="color:#d4a44d;font-size:14px;font-weight:bold;">🚧 起步（未完成）</span>
+          </div>
+          <div style="flex:1;height:3px;background:#333;border-radius:2px;"></div>
+          <div style="background:#1a1a2e;border:1px solid #444;padding:8px 16px;border-radius:8px;">
+            <span style="color:#888;font-size:14px;">✏️ 写作</span>
+          </div>
+          <div style="flex:1;height:3px;background:#333;border-radius:2px;"></div>
+          <div style="background:#1a1a2e;border:1px solid #444;padding:8px 16px;border-radius:8px;">
+            <span style="color:#888;font-size:14px;">🔍 审查</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 提示条 -->
+      <div style="background:#2a1a0d;border:1px solid #8a5a2d;border-radius:8px;padding:14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-weight:bold;font-size:13px;color:#d4a44d;margin-bottom:4px;">⚠️ 项目设置尚未完成</div>
+          <div style="font-size:12px;color:#c49040;">补充书名和题材后即可开始写作</div>
+        </div>
+        <button class="mock-button" style="background:#8a5a2d;color:#d4a44d;border:none;padding:8px 18px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;">继续设置</button>
+      </div>
+
+      <!-- 项目概况（部分信息） -->
+      <div style="border:1px solid #333;border-radius:8px;padding:12px;background:#1a1a2e;">
+        <div style="font-weight:bold;margin-bottom:6px;font-size:12px;">项目概况</div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:11px;">
+          <span style="color:#888;">书名</span><span>我在异界开挂修仙</span>
+          <span style="color:#888;">题材</span><span style="color:#555;font-style:italic;">未设置 — 点击"继续设置"补充</span>
+          <span style="color:#888;">当前章节</span><span>0</span>
+          <span style="color:#888;">创建日期</span><span>2026-04-16</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 浮动按钮 -->
+    <div style="text-align:right;padding:4px 16px;">
+      <div style="display:inline-block;width:48px;height:48px;background:#2d5a2d;border:2px solid #6bcf6b;border-radius:50%;text-align:center;line-height:48px;font-size:20px;cursor:pointer;box-shadow:0 0 16px #2d5a2d;">💬</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 章节页空状态 ==================== -->
+<div class="mockup" style="margin-bottom:16px;">
+  <div class="mockup-header">📝 章节页 — 空状态（无章节）</div>
+  <div class="mockup-body" style="font-size:12px;">
+    <div style="display:flex;align-items:center;gap:0;padding:6px 12px;background:#1a1a2e;border-bottom:1px solid #333;">
+      <div style="display:flex;gap:0;font-size:13px;">
+        <span style="color:#888;padding:4px 12px;">① 总览</span>
+        <span style="color:#888;padding:4px 12px;">② 大纲</span>
+        <span style="color:#888;padding:4px 12px;">③ 设定</span>
+        <span style="color:#fff;padding:4px 12px;border-bottom:2px solid #6bcf6b;">④ 章节</span>
+      </div>
+      <div style="margin-left:auto;"><span style="font-size:12px;color:#fff;background:#2d5a2d;padding:4px 12px;border-radius:4px;">📖 我在异界开挂修仙 ▾</span></div>
+    </div>
+
+    <div style="display:flex;min-height:260px;">
+      <!-- 左侧空列表 -->
+      <div style="width:140px;border-right:1px solid #333;padding:8px;background:#1a1a2e;flex-shrink:0;">
+        <div style="font-weight:bold;margin-bottom:6px;font-size:11px;">章节</div>
+        <div style="font-size:11px;color:#555;font-style:italic;">还没有章节</div>
+      </div>
+
+      <!-- 右侧空状态 -->
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px;background:#0d0d1a;">
+        <div style="text-align:center;">
+          <div style="font-size:36px;margin-bottom:12px;">📝</div>
+          <h3 style="margin-bottom:6px;font-size:15px;">开始写第1章</h3>
+          <p style="color:#888;margin-bottom:16px;font-size:12px;">万事开头难，先写第一段吧</p>
+          <button class="mock-button" style="background:#2d5a2d;color:#6bcf6b;border:2px solid #6bcf6b;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 0 12px #2d5a2d;">
+            ✏️ 写第1章
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 浮动按钮 -->
+    <div style="text-align:right;padding:4px 16px;">
+      <div style="display:inline-block;width:48px;height:48px;background:#2d5a2d;border:2px solid #6bcf6b;border-radius:50%;text-align:center;line-height:48px;font-size:20px;cursor:pointer;box-shadow:0 0 16px #2d5a2d;">💬</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 设定页（带数量标签） ==================== -->
+<div class="mockup" style="margin-bottom:16px;">
+  <div class="mockup-header">⚙️ 设定页 — 筛选标签含数量</div>
+  <div class="mockup-body" style="font-size:12px;">
+    <div style="display:flex;align-items:center;gap:0;padding:6px 12px;background:#1a1a2e;border-bottom:1px solid #333;">
+      <div style="display:flex;gap:0;font-size:13px;">
+        <span style="color:#888;padding:4px 12px;">① 总览</span>
+        <span style="color:#888;padding:4px 12px;">② 大纲</span>
+        <span style="color:#fff;padding:4px 12px;border-bottom:2px solid #6bcf6b;">③ 设定</span>
+        <span style="color:#888;padding:4px 12px;">④ 章节</span>
+      </div>
+      <div style="margin-left:auto;"><span style="font-size:12px;color:#fff;background:#2d5a2d;padding:4px 12px;border-radius:4px;">📖 我在异界开挂修仙 ▾</span></div>
+    </div>
+
+    <div style="display:flex;min-height:200px;">
+      <div style="width:220px;border-right:1px solid #333;padding:8px;background:#1a1a2e;flex-shrink:0;">
+        <!-- 分类筛选（含数量） -->
+        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;">
+          <span style="background:#2d5a2d;color:#6bcf6b;padding:1px 6px;border-radius:8px;font-size:9px;">全部(6)</span>
+          <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:1px 6px;border-radius:8px;font-size:9px;">人物(3)</span>
+          <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:1px 6px;border-radius:8px;font-size:9px;">势力(1)</span>
+          <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:1px 6px;border-radius:8px;font-size:9px;">地点(0)</span>
+          <span style="background:#1a1a2e;border:1px solid #444;color:#aaa;padding:1px 6px;border-radius:8px;font-size:9px;">世界观(2)</span>
+        </div>
+        <div style="background:#2d5a2d;border:1px solid #6bcf6b;border-radius:4px;padding:6px 8px;margin-bottom:4px;cursor:pointer;">
+          <div style="font-weight:bold;font-size:11px;color:#6bcf6b;">👤 叶凡（主角）</div>
+          <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">天道系统 · 炼气三层</div>
+        </div>
+        <div style="background:#1a1a2e;border:1px solid #333;border-radius:4px;padding:6px 8px;margin-bottom:4px;cursor:pointer;">
+          <div style="font-weight:bold;font-size:11px;">👤 苏瑶（女主）</div>
+          <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">对抗线 · 天机阁</div>
+        </div>
+        <div style="background:#1a1a2e;border:1px solid #333;border-radius:4px;padding:6px 8px;margin-bottom:4px;cursor:pointer;">
+          <div style="font-weight:bold;font-size:11px;">👤 魔尊</div>
+          <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">大反派 · 统治修仙界</div>
+        </div>
+        <div style="background:#1a1a2e;border:1px solid #333;border-radius:4px;padding:6px 8px;margin-bottom:4px;cursor:pointer;">
+          <div style="font-weight:bold;font-size:11px;">🏰 天机阁</div>
+          <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">势力 · 亦敌亦友</div>
+        </div>
+        <div style="background:#1a1a2e;border:1px solid #333;border-radius:4px;padding:6px 8px;margin-bottom:4px;cursor:pointer;">
+          <div style="font-weight:bold;font-size:11px;">🌍 修仙界</div>
+          <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">世界观 · 灵气复苏</div>
+        </div>
+        <div style="background:#1a1a2e;border:1px solid #333;border-radius:4px;padding:6px 8px;cursor:pointer;">
+          <div style="font-weight:bold;font-size:11px;">⚡ 力量体系</div>
+          <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">炼气→筑基→金丹→...</div>
+        </div>
+      </div>
+      <div style="flex:1;padding:14px;background:#0d0d1a;">
+        <div style="font-size:11px;color:#888;margin-bottom:6px;">设定集/主角卡.md</div>
+        <div style="font-size:12px;color:#ccc;line-height:1.5;">
+          <span style="color:#6bcf6b;font-weight:bold;"># 主角卡</span><br/>
+          > 主角：叶凡<br/>
+          ## 三要素<br/>
+          - 欲望：回到原来的世界...
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px;">
+          <button class="mock-button" style="background:#2d5a2d;color:#6bcf6b;border:none;padding:6px 14px;border-radius:4px;font-size:12px;">保存</button>
+          <button class="mock-button" style="background:#1a1a2e;color:#888;border:1px dashed #555;padding:6px 14px;border-radius:4px;font-size:12px;cursor:help;" title="需要至少2个设定文件才能检查冲突">检查冲突 🔒</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 浮动按钮 -->
+    <div style="text-align:right;padding:4px 16px;">
+      <div style="display:inline-block;width:48px;height:48px;background:#2d5a2d;border:2px solid #6bcf6b;border-radius:50%;text-align:center;line-height:48px;font-size:20px;cursor:pointer;box-shadow:0 0 16px #2d5a2d;">💬</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px;padding:10px;background:#1a2a1a;border-radius:8px;font-size:12px;color:#6bcf6b;">
+  <strong>v4.1 补充内容：</strong>
+  <ul style="margin:4px 0 0 16px;color:#aaa;">
+    <li>✅ 创建向导 3步弹窗完整 mockup</li>
+    <li>✅ 未完成设置状态（起步阶段高亮+提示条+继续设置按钮）</li>
+    <li>✅ 章节页空状态（"开始写第1章"引导）</li>
+    <li>✅ 每个页面都画出 AI 浮动按钮</li>
+    <li>✅ 设定页筛选标签含数量：全部(6) / 人物(3) / 势力(1) / 地点(0) / 世界观(2)</li>
+  </ul>
+</div>

@@ -1,0 +1,66 @@
+<h2>状态1：无项目时的总览页</h2>
+<p class="subtitle">用户第一次进入，还没有创建任何小说项目</p>
+
+<div class="mockup">
+  <div class="mockup-header">无项目 — 总览页</div>
+  <div class="mockup-body" style="font-size:12px;">
+    <!-- 顶栏 -->
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:#1a1a2e;border-radius:6px 6px 0 0;border-bottom:1px solid #333;">
+      <div style="font-weight:bold;color:#6bcf6b;">📖 网文创作台</div>
+      <div style="margin-left:auto;display:flex;gap:8px;font-size:12px;color:#888;">
+        <span style="color:#fff;">总览</span>
+        <span>章节</span>
+        <span>大纲</span>
+        <span>设定</span>
+      </div>
+    </div>
+
+    <div style="display:flex;min-height:360px;">
+      <!-- 主内容区 -->
+      <div style="flex:3;padding:20px;">
+        <!-- 空状态 -->
+        <div style="text-align:center;padding:40px 20px;">
+          <div style="font-size:48px;margin-bottom:12px;">✍️</div>
+          <h3 style="margin-bottom:8px;">开始你的第一部网文</h3>
+          <p style="color:#888;margin-bottom:20px;font-size:13px;">创建一个小说项目，AI 将帮助你规划大纲、写章节、审查质量</p>
+          <button class="mock-button" style="background:#2d5a2d;color:#6bcf6b;border:none;padding:10px 24px;border-radius:6px;font-size:14px;cursor:pointer;font-weight:bold;">
+            ＋ 创建新小说
+          </button>
+        </div>
+
+        <!-- 或者已有项目列表 -->
+        <div style="margin-top:20px;border-top:1px solid #333;padding-top:16px;">
+          <div style="font-size:12px;color:#888;margin-bottom:8px;">已有的小说项目</div>
+          <div style="display:flex;gap:8px;">
+            <div style="border:1px solid #333;border-radius:6px;padding:10px;flex:1;cursor:pointer;" onclick="toggleSelect(this)">
+              <div style="font-weight:bold;font-size:13px;">我的修仙之路</div>
+              <div style="color:#888;font-size:11px;margin-top:2px;">修仙 · 第3章 · 12,500字</div>
+            </div>
+            <div style="border:1px solid #333;border-radius:6px;padding:10px;flex:1;cursor:pointer;" onclick="toggleSelect(this)">
+              <div style="font-weight:bold;font-size:13px;">都市神医</div>
+              <div style="color:#888;font-size:11px;margin-top:2px;">都市异能 · 第1章 · 3,200字</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧 AI 助手 -->
+      <div style="flex:1;border-left:1px solid #333;padding:12px;background:#141422;">
+        <div style="font-weight:bold;margin-bottom:8px;font-size:12px;">AI 助手</div>
+        <div style="background:#1a1a2e;border-radius:6px;padding:8px;margin-bottom:8px;font-size:11px;color:#888;">
+          你好！想开始写小说吗？点击"创建新小说"，我来帮你规划。
+        </div>
+        <div class="placeholder" style="height:28px;margin-bottom:4px;font-size:11px;">输入消息...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px;padding:8px;background:#1a2a1a;border-radius:6px;font-size:12px;color:#6bcf6b;">
+  <strong>设计要点：</strong>
+  <ul style="margin:4px 0 0 16px;color:#aaa;">
+    <li>页面结构完整，不是空白页，而是有明确的行动引导</li>
+    <li>底部显示已有项目列表，方便切换</li>
+    <li>AI 助手主动打招呼，引导用户开始</li>
+  </ul>
+</div>

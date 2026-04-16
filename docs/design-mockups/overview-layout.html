@@ -1,0 +1,106 @@
+<h2>总览页布局设计</h2>
+<p class="subtitle">当前现状 vs 改进方案（方案A：项目向导 + 步骤引导条）</p>
+
+<div class="split">
+  <!-- 当前现状 -->
+  <div class="mockup">
+    <div class="mockup-header">当前现状 — 总览页</div>
+    <div class="mockup-body" style="font-size:12px;">
+      <div class="mock-nav" style="margin-bottom:8px;">
+        总览 | 章节 | 大纲 | 设定
+      </div>
+      <div style="display:flex;">
+        <div style="flex:3;padding-right:12px;">
+          <div style="border:1px dashed #555;border-radius:6px;padding:10px;margin-bottom:8px;">
+            <div style="font-weight:bold;margin-bottom:4px;">项目概况</div>
+            <div style="color:#888;">书名：未命名项目</div>
+            <div style="color:#888;">题材：未设置</div>
+            <div style="color:#888;">当前章节：—</div>
+          </div>
+          <div style="border:1px dashed #555;border-radius:6px;padding:10px;margin-bottom:8px;">
+            <div style="font-weight:bold;margin-bottom:4px;">最近任务</div>
+            <div style="color:#666;font-style:italic;">暂无任务记录。</div>
+          </div>
+          <div style="border:1px dashed #555;border-radius:6px;padding:10px;margin-bottom:8px;">
+            <div style="font-weight:bold;margin-bottom:4px;">最近修改</div>
+            <div style="color:#666;font-style:italic;">暂无最近修改。</div>
+          </div>
+          <div style="border:1px dashed #555;border-radius:6px;padding:10px;">
+            <div style="font-weight:bold;margin-bottom:4px;">AI 下一步建议</div>
+            <div style="color:#666;font-style:italic;">后续将在此展示下一步建议。</div>
+          </div>
+        </div>
+        <div style="flex:1;border:1px dashed #555;border-radius:6px;padding:10px;">
+          <div style="font-weight:bold;margin-bottom:4px;">AI 助手</div>
+          <div class="placeholder" style="height:40px;margin-bottom:4px;">聊天输入框</div>
+          <div style="color:#666;font-size:11px;">关键词匹配路由</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:6px;background:#331111;border-radius:4px;color:#ff6b6b;font-size:11px;">
+        ⚠️ 问题：没有"创建小说"入口，四个面板都是空数据，用户不知道从哪开始
+      </div>
+    </div>
+  </div>
+
+  <!-- 改进方案 -->
+  <div class="mockup">
+    <div class="mockup-header">改进方案 — 总览页</div>
+    <div class="mockup-body" style="font-size:12px;">
+      <div class="mock-nav" style="margin-bottom:8px;">
+        📚 项目切换 ▾ | 总览 | 章节 | 大纲 | 设定
+      </div>
+      <div style="display:flex;">
+        <div style="flex:3;padding-right:12px;">
+          <!-- 步骤引导条 -->
+          <div style="background:#1a2a1a;border:1px solid #2d5a2d;border-radius:6px;padding:10px;margin-bottom:8px;">
+            <div style="font-weight:bold;margin-bottom:6px;color:#6bcf6b;">📋 创作步骤</div>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <div style="background:#2d5a2d;color:#6bcf6b;padding:4px 8px;border-radius:4px;font-size:11px;">① 初始化</div>
+              <div style="color:#555;">→</div>
+              <div style="background:#333;padding:4px 8px;border-radius:4px;font-size:11px;color:#888;">② 规划大纲</div>
+              <div style="color:#555;">→</div>
+              <div style="background:#333;padding:4px 8px;border-radius:4px;font-size:11px;color:#888;">③ 写章节</div>
+              <div style="color:#555;">→</div>
+              <div style="background:#333;padding:4px 8px;border-radius:4px;font-size:11px;color:#888;">④ 审查</div>
+            </div>
+          </div>
+          <!-- 项目概况 -->
+          <div style="border:1px dashed #555;border-radius:6px;padding:10px;margin-bottom:8px;">
+            <div style="font-weight:bold;margin-bottom:4px;">项目概况</div>
+            <div>书名：我的修仙之路</div>
+            <div>题材：修仙</div>
+            <div>当前章节：第3章</div>
+            <div>总字数：12,500</div>
+          </div>
+          <!-- 下一步建议 -->
+          <div style="border:1px solid #2d5a2d;border-radius:6px;padding:10px;margin-bottom:8px;background:#1a2a1a;">
+            <div style="font-weight:bold;margin-bottom:4px;color:#6bcf6b;">💡 下一步</div>
+            <div style="margin-bottom:6px;">大纲第1卷已就绪，可以开始写第4章了</div>
+            <button class="mock-button" style="background:#2d5a2d;color:#6bcf6b;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;">写第4章</button>
+          </div>
+          <!-- 最近任务 & 最近修改 -->
+          <div style="display:flex;gap:8px;">
+            <div style="flex:1;border:1px dashed #555;border-radius:6px;padding:10px;">
+              <div style="font-weight:bold;margin-bottom:4px;">最近任务</div>
+              <div style="font-size:11px;">✅ 写第3章 — 完成</div>
+              <div style="font-size:11px;">✅ 审查1-3章 — 完成</div>
+            </div>
+            <div style="flex:1;border:1px dashed #555;border-radius:6px;padding:10px;">
+              <div style="font-weight:bold;margin-bottom:4px;">最近修改</div>
+              <div style="font-size:11px;">正文/第3章.md — 2分钟前</div>
+              <div style="font-size:11px;">大纲/第1卷-详细大纲.md — 1小时前</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;border:1px dashed #555;border-radius:6px;padding:10px;">
+          <div style="font-weight:bold;margin-bottom:4px;">AI 助手</div>
+          <div class="placeholder" style="height:40px;margin-bottom:4px;">聊天输入框</div>
+          <div style="color:#666;font-size:11px;">智能推荐下一步操作</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:6px;background:#112211;border-radius:4px;color:#6bcf6b;font-size:11px;">
+        ✅ 改进：步骤引导条 + 下一步建议 + 项目切换器，用户始终知道该做什么
+      </div>
+    </div>
+  </div>
+</div>

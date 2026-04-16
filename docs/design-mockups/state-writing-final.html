@@ -1,0 +1,124 @@
+<h2>最终版：写作中总览页</h2>
+<p class="subtitle">顶栏精简（导航+项目切换），所有内容在页面内展示</p>
+
+<div class="mockup">
+  <div class="mockup-header">写作中 — 总览页（最终版）</div>
+  <div class="mockup-body" style="font-size:12px;">
+    <!-- 顶栏（精简） -->
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:#1a1a2e;border-radius:6px 6px 0 0;border-bottom:1px solid #333;">
+      <div style="font-size:11px;color:#aaa;background:#2d5a2d;padding:2px 8px;border-radius:4px;cursor:pointer;">我在异界开挂修仙 ▾</div>
+      <div style="margin-left:auto;display:flex;gap:0;font-size:13px;">
+        <span style="color:#fff;padding:4px 12px;border-bottom:2px solid #6bcf6b;">总览</span>
+        <span style="color:#888;padding:4px 12px;cursor:pointer;">章节</span>
+        <span style="color:#888;padding:4px 12px;cursor:pointer;">大纲</span>
+        <span style="color:#888;padding:4px 12px;cursor:pointer;">设定</span>
+      </div>
+    </div>
+
+    <div style="display:flex;min-height:360px;">
+      <!-- 主内容区 -->
+      <div style="flex:3;padding:16px;">
+
+        <!-- 步骤引导条 -->
+        <div style="background:#1a1a2e;border:1px solid #2d5a2d;border-radius:8px;padding:10px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:0;">
+            <div style="display:flex;align-items:center;gap:4px;background:#2d5a2d;padding:5px 10px;border-radius:4px;">
+              <span style="color:#6bcf6b;">✓</span>
+              <span style="color:#6bcf6b;font-size:11px;font-weight:bold;">起步</span>
+            </div>
+            <div style="width:30px;height:2px;background:#2d5a2d;"></div>
+            <div style="display:flex;align-items:center;gap:4px;background:#2d5a2d;padding:5px 10px;border-radius:4px;border:2px solid #6bcf6b;">
+              <span style="color:#6bcf6b;font-size:11px;font-weight:bold;">✏️ 写作</span>
+            </div>
+            <div style="width:30px;height:2px;background:#333;"></div>
+            <div style="display:flex;align-items:center;gap:4px;background:#1a1a2e;border:1px solid #444;padding:5px 10px;border-radius:4px;">
+              <span style="color:#888;font-size:11px;">🔍 审查</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 下一步建议（突出） -->
+        <div style="border:1px solid #2d5a2d;border-radius:6px;padding:12px;background:#0d1a0d;margin-bottom:10px;">
+          <div style="font-weight:bold;margin-bottom:6px;font-size:13px;color:#6bcf6b;">💡 下一步</div>
+          <div style="font-size:12px;margin-bottom:8px;">继续写第4章</div>
+          <div style="display:flex;gap:6px;">
+            <button class="mock-button" style="background:#2d5a2d;color:#6bcf6b;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">写第4章</button>
+            <button class="mock-button" style="background:#333;color:#aaa;border:1px solid #444;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px;">审查1-3章</button>
+          </div>
+        </div>
+
+        <!-- 项目概况 + 最近修改（并排） -->
+        <div style="display:flex;gap:10px;">
+          <!-- 项目概况 -->
+          <div style="flex:1;border:1px solid #333;border-radius:6px;padding:10px;background:#1a1a2e;">
+            <div style="font-weight:bold;margin-bottom:6px;font-size:12px;">项目概况</div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;font-size:11px;">
+              <span style="color:#888;">书名</span><span>我在异界开挂修仙</span>
+              <span style="color:#888;">题材</span><span>修仙 + 系统流</span>
+              <span style="color:#888;">当前章节</span><span>第3章</span>
+              <span style="color:#888;">总字数</span><span>12,500</span>
+              <span style="color:#888;">创建日期</span><span>2026-04-10</span>
+            </div>
+          </div>
+
+          <!-- 最近修改（按分类，可跳转） -->
+          <div style="flex:2;border:1px solid #333;border-radius:6px;padding:10px;background:#1a1a2e;">
+            <div style="font-weight:bold;margin-bottom:6px;font-size:12px;">最近修改</div>
+            <div style="display:flex;gap:10px;">
+              <div style="flex:1;">
+                <div style="font-size:10px;color:#6bcf6b;margin-bottom:3px;font-weight:bold;">📝 章节</div>
+                <div style="font-size:11px;padding:2px 4px;border-radius:2px;cursor:pointer;color:#aaa;">
+                  第3章.md <span style="color:#666;">10分钟前</span>
+                </div>
+                <div style="font-size:11px;padding:2px 4px;border-radius:2px;cursor:pointer;color:#aaa;">
+                  第2章.md <span style="color:#666;">昨天</span>
+                </div>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:10px;color:#6bcf6b;margin-bottom:3px;font-weight:bold;">📋 大纲</div>
+                <div style="font-size:11px;padding:2px 4px;border-radius:2px;cursor:pointer;color:#aaa;">
+                  第1卷-详细大纲.md <span style="color:#666;">昨天</span>
+                </div>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:10px;color:#6bcf6b;margin-bottom:3px;font-weight:bold;">⚙️ 设定</div>
+                <div style="font-size:11px;padding:2px 4px;border-radius:2px;cursor:pointer;color:#aaa;">
+                  主角卡.md <span style="color:#666;">1小时前</span>
+                </div>
+                <div style="font-size:11px;padding:2px 4px;border-radius:2px;cursor:pointer;color:#aaa;">
+                  金手指设计.md <span style="color:#666;">2小时前</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 右侧 AI 助手 -->
+      <div style="flex:1;border-left:1px solid #333;padding:12px;background:#141422;">
+        <div style="font-weight:bold;margin-bottom:8px;font-size:12px;">AI 助手</div>
+        <div style="background:#1a1a2e;border-radius:6px;padding:8px;margin-bottom:6px;font-size:11px;color:#aaa;">
+          第3章写完了！要不要继续写第4章？
+        </div>
+        <div style="background:#2d5a2d;border-radius:6px;padding:8px;margin-bottom:6px;font-size:11px;color:#6bcf6b;cursor:pointer;">
+          ▶ 写第4章
+        </div>
+        <div style="background:#1a1a2e;border-radius:6px;padding:8px;margin-bottom:8px;font-size:11px;color:#aaa;cursor:pointer;">
+          或者：审查1-3章 / 修改设定 / 规划大纲
+        </div>
+        <div class="placeholder" style="height:28px;font-size:11px;">输入消息...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px;padding:8px;background:#1a2a1a;border-radius:6px;font-size:12px;color:#6bcf6b;">
+  <strong>布局总结：</strong>
+  <ul style="margin:4px 0 0 16px;color:#aaa;">
+    <li>顶栏：只有项目切换器 + 页面导航标签</li>
+    <li>总览页内部（从上到下）：步骤引导条 → 下一步建议 → 项目概况+最近修改</li>
+    <li>最近修改按章节/大纲/设定分类，点击跳转到对应页面的对应文件</li>
+    <li>右侧 AI 助手栏保持不变</li>
+  </ul>
+</div>
