@@ -1,22 +1,51 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createTask, fetchCurrentTask, fetchJSON, sendChat, subscribeSSE } from './api.js'
+import {
+  createTask,
+  fetchCurrentTask,
+  fetchJSON,
+  fetchProjects,
+  fetchRecentActivity,
+  sendChat,
+  subscribeSSE,
+  switchProject as switchProjectAPI,
+} from './api.js'
 import {
   buildChatReplyModel,
   buildCompletionNotice,
   buildRightSidebarModel,
   buildTopBarModel,
   createInitialWorkbenchState,
+  getProjectStatus,
   normalizeWorkbenchPage,
   resolveTargetPage,
   shouldConfirmAction,
 } from './workbench/data.js'
 import TopBar from './workbench/TopBar.jsx'
-import RightSidebar from './workbench/RightSidebar.jsx'
 import OverviewPage from './workbench/OverviewPage.jsx'
 import ChapterPage from './workbench/ChapterPage.jsx'
 import OutlinePage from './workbench/OutlinePage.jsx'
 import SettingPage from './workbench/SettingPage.jsx'
-import OnboardingGuide, { hasGuideCompleted, resetGuideDone } from './workbench/OnboardingGuide.jsx'
+
+// --- Inline Conflict Dialog ---
+
+function ConflictDialog({ file, onReload, onKeep }) {
+  return (
+    <div className="conflict-dialog-overlay">
+      <div className="conflict-dialog">
+        <h3>文件已变更</h3>
+        <p>{file} 已被外部修改，当前编辑区有未保存的内容。</p>
+        <div className="conflict-dialog-actions">
+          <button type="button" className="workbench-primary-button" onClick={onReload}>
+            重新加载
+          </button>
+          <button type="button" className="workbench-nav-button" onClick={onKeep}>
+            保留我的修改
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function App() {
   const [workbenchState, setWorkbenchState] = useState(() => createInitialWorkbenchState())
@@ -43,8 +72,16 @@ export default function App() {
   const lastActionRef = useRef(null)
   const topBarRef = useRef(null)
   const mainRef = useRef(null)
-  const sidebarRef = useRef(null)
-  const [guideStep, setGuideStep] = useState(() => hasGuideCompleted() ? 0 : 1)
+
+  // --- New project state ---
+  const [projectStatus, setProjectStatus] = useState('loading') // 'loading'|'no-project'|'incomplete'|'ready'
+  const [projectInfo, setProjectInfo] = useState(null)
+  const [projects, setProjects] = useState([])
+  const [showWizard, setShowWizard] = useState(false)
+  const [wizardPrefill, setWizardPrefill] = useState(null)
+  const [aiOpen, setAiOpen] = useState(false)
+  const [recentActivities, setRecentActivities] = useState([])
+  const [conflictDialog, setConflictDialog] = useState({ visible: false, file: null })
 
   // --- Derived values (must be defined before useEffects that reference them) ---
 
@@ -65,9 +102,12 @@ export default function App() {
     try {
       const summary = await fetchJSON('/api/workbench/summary')
       setWorkbenchState(prev => ({ ...prev, summary }))
+      setProjectInfo(summary)
+      setProjectStatus(getProjectStatus(summary))
       setLoadError('')
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : '加载工作台摘要失败')
+      setProjectStatus('no-project')
     } finally {
       setLoading(false)
     }
@@ -81,6 +121,13 @@ export default function App() {
       // Phase 1 下任务接口失败时保持前端占位默认值
     }
   }, [])
+
+  const reloadCurrentFile = useCallback(() => {
+    setReloadKeys(prev => ({
+      ...prev,
+      [activePage]: prev[activePage] + 1,
+    }))
+  }, [activePage])
 
   // --- Action handlers (handleRunAction must be before handleRetryAction) ---
 
@@ -177,25 +224,53 @@ export default function App() {
     setWorkbenchState(prev => ({ ...prev, page }))
   }, [])
 
-  const handleGuideNext = useCallback(() => setGuideStep(s => s + 1), [])
-  const handleGuidePrev = useCallback(() => setGuideStep(s => Math.max(1, s - 1)), [])
-  const handleGuideClose = useCallback(() => setGuideStep(0), [])
-  const handleRestartGuide = useCallback(() => {
-    resetGuideDone()
-    setGuideStep(1)
+  const handleCreateNew = useCallback(() => {
+    setWizardPrefill(null)
+    setShowWizard(true)
   }, [])
+
+  const handleSwitchProject = useCallback(async (path) => {
+    try {
+      await switchProjectAPI(path)
+      await loadSummary()
+      const projectsData = await fetchProjects()
+      setProjects(projectsData.projects || [])
+    } catch {
+      // switch failure - could show an error
+    }
+  }, [loadSummary])
+
+  const handleWizardCreated = useCallback((result) => {
+    setShowWizard(false)
+    loadSummary()
+    fetchProjects().then(r => setProjects(r.projects || []))
+  }, [loadSummary])
 
   // --- Effects ---
 
   useEffect(() => {
     loadSummary()
     loadCurrentTask()
+    fetchProjects()
+      .then(r => setProjects(r.projects || []))
+      .catch(() => {})
+    fetchRecentActivity()
+      .then(r => setRecentActivities(r.activities || []))
+      .catch(() => {})
   }, [loadCurrentTask, loadSummary])
 
   useEffect(() => {
     const unsubscribe = subscribeSSE(
       (event) => {
         if (event?.type === 'file.changed') {
+          const changedFile = event.path || event.file
+          if (changedFile && changedFile === pageState[activePage]?.selectedPath) {
+            if (pageState[activePage]?.dirty) {
+              setConflictDialog({ visible: true, file: changedFile })
+            } else {
+              reloadCurrentFile()
+            }
+          }
           loadSummary()
           return
         }
@@ -270,7 +345,7 @@ export default function App() {
       unsubscribe()
       setConnected(false)
     }
-  }, [activePage, loadSummary, sidebarContext, triggerWorkspaceRefresh])
+  }, [activePage, loadSummary, pageState, reloadCurrentFile, sidebarContext, triggerWorkspaceRefresh])
 
   useEffect(() => {
     const handler = (e) => {
@@ -301,7 +376,7 @@ export default function App() {
     [activePage, workbenchState.currentTask, workbenchState.summary],
   )
 
-  const sidebarModel = useMemo(
+  const aiAssistantModel = useMemo(
     () => buildRightSidebarModel({
       context: sidebarContext,
       chatMessages: workbenchState.chatMessages,
@@ -366,10 +441,13 @@ export default function App() {
     onContextChange: setSidebarContext,
     onPageStateChange: handlePageStateChange,
     cachedSelectedPath: pageState[activePage]?.selectedPath ?? null,
-    onRestartGuide: handleRestartGuide,
+    projectStatus,
+    projectInfo,
+    recentActivities,
+    onCreateNew: handleCreateNew,
+    onNavigateToPage: handleNavigateToPage,
+    onRunAction: handleRunAction,
   }
-
-  const guideTargets = { topbar: topBarRef, main: mainRef, sidebar: sidebarRef }
 
   // --- Render ---
 
@@ -380,6 +458,10 @@ export default function App() {
           model={topBarModel}
           connected={connected}
           onSelectPage={handleSelectPage}
+          projects={projects}
+          currentProjectPath={workbenchState.summary?.project?.path || null}
+          onSwitchProject={handleSwitchProject}
+          onCreateNew={handleCreateNew}
         />
       </div>
 
@@ -390,25 +472,37 @@ export default function App() {
           {activePage === 'outline' && <OutlinePage {...pageProps} reloadToken={reloadKeys.outline} />}
           {activePage === 'settings' && <SettingPage {...pageProps} reloadToken={reloadKeys.settings} />}
         </div>
-
-        <div ref={sidebarRef}>
-          <RightSidebar
-            model={sidebarModel}
-            onSendMessage={handleSendMessage}
-            onRunAction={handleRunAction}
-            onRetryAction={handleRetryAction}
-            onNavigateToPage={handleNavigateToPage}
-          />
-        </div>
       </div>
 
-      {guideStep > 0 && guideStep <= 4 && (
-        <OnboardingGuide
-          step={guideStep}
-          onNext={handleGuideNext}
-          onPrev={handleGuidePrev}
-          onClose={handleGuideClose}
-          targets={guideTargets}
+      {/* AIAssistant floating component placeholder — will be replaced in Task 7 */}
+      <button
+        type="button"
+        className="ai-fab"
+        onClick={() => setAiOpen(prev => !prev)}
+        aria-label="AI 助手"
+      >
+        💬
+      </button>
+
+      {/* CreateWizard placeholder — will be replaced in Task 9 */}
+      {showWizard && (
+        <div className="create-wizard-overlay" onClick={() => setShowWizard(false)}>
+          <div className="create-wizard-modal" onClick={e => e.stopPropagation()}>
+            <p>创建向导占位（Task 9 实现）</p>
+            <button type="button" className="workbench-nav-button" onClick={() => setShowWizard(false)}>关闭</button>
+          </div>
+        </div>
+      )}
+
+      {/* Conflict dialog */}
+      {conflictDialog.visible && (
+        <ConflictDialog
+          file={conflictDialog.file}
+          onReload={() => {
+            reloadCurrentFile()
+            setConflictDialog({ visible: false, file: null })
+          }}
+          onKeep={() => setConflictDialog({ visible: false, file: null })}
         />
       )}
     </div>
