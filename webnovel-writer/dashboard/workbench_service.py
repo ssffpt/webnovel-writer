@@ -168,3 +168,72 @@ def _is_child(path: Path, parent: Path) -> bool:
         return True
     except ValueError:
         return False
+
+
+def build_outline_tree(project_root: Path) -> dict[str, Any]:
+    """构建大纲树结构。
+
+    大纲目录为平铺结构（非子目录）：
+    - 大纲/总纲.md
+    - 大纲/爽点规划.md
+    - 大纲/第N卷-详细大纲.md
+
+    返回 { files, volumes, total_volumes }。
+    """
+    import re
+
+    outline_dir = project_root / "大纲"
+
+    # 扫描所有 .md 文件
+    files: list[dict] = []
+    if outline_dir.is_dir():
+        for f in sorted(outline_dir.iterdir()):
+            if f.is_file() and f.suffix == ".md":
+                files.append({
+                    "name": f.name,
+                    "path": f"大纲/{f.name}",
+                    "type": "file",
+                })
+
+    # 从 state.json 读取 target_chapters
+    target_chapters = 600  # 默认
+    state_path = project_root / ".webnovel" / "state.json"
+    if state_path.is_file():
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            tc = state.get("project_info", {}).get("target_chapters")
+            if tc and isinstance(tc, (int, float)):
+                target_chapters = int(tc)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # 每卷 50 章
+    chapters_per_volume = 50
+    total_volumes = (target_chapters - 1) // chapters_per_volume + 1 if target_chapters > 0 else 1
+
+    # 检测每卷是否有详细大纲
+    volume_pattern = re.compile(r"第(\d+)卷")
+    existing_volumes: set[int] = set()
+    for f in files:
+        m = volume_pattern.search(f["name"])
+        if m:
+            existing_volumes.add(int(m.group(1)))
+
+    volumes: list[dict] = []
+    for v in range(1, total_volumes + 1):
+        start = (v - 1) * chapters_per_volume + 1
+        end = min(v * chapters_per_volume, target_chapters)
+        has_outline = v in existing_volumes
+        outline_path = f"大纲/第{v}卷-详细大纲.md" if has_outline else None
+        volumes.append({
+            "number": v,
+            "has_outline": has_outline,
+            "outline_path": outline_path,
+            "chapter_range": [start, end],
+        })
+
+    return {
+        "files": files,
+        "volumes": volumes,
+        "total_volumes": total_volumes,
+    }
