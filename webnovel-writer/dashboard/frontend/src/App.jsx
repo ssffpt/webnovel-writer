@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  createProject,
   createTask,
   fetchCurrentTask,
+  fetchGenres,
+  fetchGoldenFingerTypes,
   fetchJSON,
   fetchProjects,
   fetchRecentActivity,
@@ -22,6 +25,7 @@ import {
 } from './workbench/data.js'
 import TopBar from './workbench/TopBar.jsx'
 import AIAssistant from './workbench/AIAssistant.jsx'
+import CreateWizard from './workbench/CreateWizard.jsx'
 import OverviewPage from './workbench/OverviewPage.jsx'
 import ChapterPage from './workbench/ChapterPage.jsx'
 import OutlinePage from './workbench/OutlinePage.jsx'
@@ -83,6 +87,8 @@ export default function App() {
   const [aiOpen, setAiOpen] = useState(false)
   const [recentActivities, setRecentActivities] = useState([])
   const [conflictDialog, setConflictDialog] = useState({ visible: false, file: null })
+  const [genres, setGenres] = useState([])
+  const [goldenFingerTypes, setGoldenFingerTypes] = useState([])
 
   // --- Derived values (must be defined before useEffects that reference them) ---
 
@@ -228,7 +234,14 @@ export default function App() {
   const handleCreateNew = useCallback(() => {
     setWizardPrefill(null)
     setShowWizard(true)
-  }, [])
+    // Load genres and gf types if not already loaded
+    if (genres.length === 0) {
+      fetchGenres().then(r => setGenres(r.genres || [])).catch(() => {})
+    }
+    if (goldenFingerTypes.length === 0) {
+      fetchGoldenFingerTypes().then(r => setGoldenFingerTypes(r.types || [])).catch(() => {})
+    }
+  }, [genres.length, goldenFingerTypes.length])
 
   const handleSwitchProject = useCallback(async (path) => {
     try {
@@ -489,14 +502,16 @@ export default function App() {
         onToggle={() => setAiOpen(prev => !prev)}
       />
 
-      {/* CreateWizard placeholder — will be replaced in Task 9 */}
+      {/* CreateWizard */}
       {showWizard && (
-        <div className="create-wizard-overlay" onClick={() => setShowWizard(false)}>
-          <div className="create-wizard-modal" onClick={e => e.stopPropagation()}>
-            <p>创建向导占位（Task 9 实现）</p>
-            <button type="button" className="workbench-nav-button" onClick={() => setShowWizard(false)}>关闭</button>
-          </div>
-        </div>
+        <CreateWizard
+          open={showWizard}
+          onClose={() => setShowWizard(false)}
+          onCreated={handleWizardCreated}
+          genres={genres}
+          goldenFingerTypes={goldenFingerTypes}
+          prefillData={wizardPrefill}
+        />
       )}
 
       {/* Conflict dialog */}
