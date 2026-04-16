@@ -75,3 +75,26 @@ export function subscribeSSE(onMessage, handlers = {}) {
     };
     return () => es.close();
 }
+
+// --- 新增 API（创建向导 & 项目管理）---
+export function fetchGenres() {
+    return fetchJSON('/api/genres');
+}
+export function fetchGoldenFingerTypes() {
+    return fetchJSON('/api/golden-finger-types');
+}
+export function createProject(data) {
+    return postJSON('/api/project/create', data);
+}
+export function fetchProjects() {
+    return fetchJSON('/api/projects');
+}
+export function switchProject(path) {
+    return postJSON('/api/project/switch', { path });
+}
+export function fetchOutlineTree() {
+    return fetchJSON('/api/outline/tree');
+}
+export function fetchRecentActivity() {
+    return fetchJSON('/api/recent-activity');
+}

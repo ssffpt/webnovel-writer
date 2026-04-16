@@ -1,8 +1,8 @@
 export const WORKBENCH_PAGES = [
-  { id: 'overview', label: '总览' },
-  { id: 'chapters', label: '章节' },
-  { id: 'outline', label: '大纲' },
-  { id: 'settings', label: '设定' },
+  { id: 'overview', label: '总览', number: '①' },
+  { id: 'outline', label: '大纲', number: '②' },
+  { id: 'settings', label: '设定', number: '③' },
+  { id: 'chapters', label: '章节', number: '④' },
 ]
 
 export const DEFAULT_WORKBENCH_PAGE = 'overview'
@@ -146,6 +146,40 @@ export function shouldConfirmAction(context) {
 export function shouldConfirmNavigation(context) {
   return context?.dirty === true
 }
+
+export function getProjectStatus(projectInfo) {
+  if (!projectInfo) return 'no-project';
+  const pi = projectInfo.project_info || projectInfo.project || {};
+  if (!pi.title || !pi.genre) return 'incomplete';
+  return 'ready';
+}
+
+export function getNextSuggestion(summary) {
+  if (!summary) return null;
+  const progress = summary.progress || {};
+  const chapter = progress.current_chapter || 0;
+  if (chapter === 0) {
+    return { text: '开始写第1章', action: 'write_chapter', params: { chapter: 1 } };
+  }
+  return { text: `写第${chapter + 1}章`, action: 'write_chapter', params: { chapter: chapter + 1 } };
+}
+
+export const ENTITY_TYPE_MAP = {
+  '角色': { label: '人物', icon: '👤' },
+  '势力': { label: '势力', icon: '🏛' },
+  '地点': { label: '地点', icon: '📍' },
+  '物品': { label: '物品', icon: '💎' },
+  '招式': { label: '招式', icon: '⚔️' },
+};
+export const ENTITY_FILTER_CATEGORIES = ['全部', '人物', '势力', '地点', '物品', '招式'];
+// 前端筛选标签的 type 映射（显示名 → 数据库 type 值）
+export const FILTER_TO_DB_TYPE = {
+  '人物': '角色',
+  '势力': '势力',
+  '地点': '地点',
+  '物品': '物品',
+  '招式': '招式',
+};
 
 export function buildChatReplyModel(response, fallbackContext = null) {
   const scope = response?.scope ?? {
