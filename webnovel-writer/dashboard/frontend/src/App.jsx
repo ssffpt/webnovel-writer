@@ -21,6 +21,7 @@ import {
   shouldConfirmAction,
 } from './workbench/data.js'
 import TopBar from './workbench/TopBar.jsx'
+import AIAssistant from './workbench/AIAssistant.jsx'
 import OverviewPage from './workbench/OverviewPage.jsx'
 import ChapterPage from './workbench/ChapterPage.jsx'
 import OutlinePage from './workbench/OutlinePage.jsx'
@@ -474,15 +475,19 @@ export default function App() {
         </div>
       </div>
 
-      {/* AIAssistant floating component placeholder — will be replaced in Task 7 */}
-      <button
-        type="button"
-        className="ai-fab"
-        onClick={() => setAiOpen(prev => !prev)}
-        aria-label="AI 助手"
-      >
-        💬
-      </button>
+      {/* AIAssistant floating component */}
+      <AIAssistant
+        chatMessages={workbenchState.chatMessages}
+        suggestedActions={workbenchState.suggestedActions}
+        currentTask={aiAssistantModel.currentTask}
+        chatPending={chatPending}
+        onSendMessage={handleSendMessage}
+        onRunAction={handleRunAction}
+        onRetryAction={handleRetryAction}
+        onNavigateToPage={handleNavigateToPage}
+        visible={aiOpen}
+        onToggle={() => setAiOpen(prev => !prev)}
+      />
 
       {/* CreateWizard placeholder — will be replaced in Task 9 */}
       {showWizard && (
