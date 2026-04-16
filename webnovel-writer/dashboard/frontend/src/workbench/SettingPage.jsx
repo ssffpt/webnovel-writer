@@ -1,85 +1,82 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchFileTree, readFile, saveFile } from '../api.js'
-
-const CATEGORIES = ['全部', '人物', '势力', '地点', '世界观']
-
-function flattenFiles(nodes = []) {
-  const files = []
-  for (const node of nodes) {
-    if (node.type === 'file') {
-      files.push(node)
-    } else if (node.type === 'dir') {
-      files.push(...flattenFiles(node.children || []))
-    }
-  }
-  return files
-}
-
-function inferCategory(path = '') {
-  const text = path.toLowerCase()
-  if (text.includes('人物') || text.includes('角色') || text.includes('主角')) return '人物'
-  if (text.includes('势力') || text.includes('宗门')) return '势力'
-  if (text.includes('地点') || text.includes('地理') || text.includes('地图')) return '地点'
-  if (text.includes('世界') || text.includes('体系') || text.includes('设定')) return '世界观'
-  return '全部'
-}
+import { fetchJSON, readFile, saveFile } from '../api.js'
+import { ENTITY_TYPE_MAP, ENTITY_FILTER_CATEGORIES, FILTER_TO_DB_TYPE } from './data.js'
 
 export default function SettingPage({ loading, loadError, onRetry, onContextChange, onPageStateChange, cachedSelectedPath = null, reloadToken = 0 }) {
-  const [treeLoading, setTreeLoading] = useState(true)
-  const [treeError, setTreeError] = useState('')
-  const [settingFiles, setSettingFiles] = useState([])
-  const [category, setCategory] = useState('全部')
-  const [selectedPath, setSelectedPath] = useState(null)
+  const [entitiesLoading, setEntitiesLoading] = useState(true)
+  const [entitiesError, setEntitiesError] = useState('')
+  const [entities, setEntities] = useState([])
+  const [filter, setFilter] = useState('全部')
+  const [selectedId, setSelectedId] = useState(null)
   const [draft, setDraft] = useState('')
   const [dirty, setDirty] = useState(false)
   const [saveState, setSaveState] = useState('idle')
   const [contentError, setContentError] = useState('')
 
+  // Load all entities once
   useEffect(() => {
     let active = true
-    async function loadTree() {
-      setTreeLoading(true)
-      setTreeError('')
+    async function loadEntities() {
+      setEntitiesLoading(true)
+      setEntitiesError('')
       try {
-        const tree = await fetchFileTree()
-        const files = flattenFiles(tree['设定集'] || [])
+        const data = await fetchJSON('/api/entities')
+        const list = data.entities || data || []
         if (!active) return
-        setSettingFiles(files)
-        if (cachedSelectedPath && files.some(f => f.path === cachedSelectedPath)) {
-          setSelectedPath(current => current ?? cachedSelectedPath)
-        } else {
-          setSelectedPath(current => current ?? files[0]?.path ?? null)
+        setEntities(list)
+        if (cachedSelectedPath) {
+          const match = list.find(e => e.file_path === cachedSelectedPath)
+          if (match) setSelectedId(current => current ?? match.id)
+        } else if (list.length > 0) {
+          setSelectedId(current => current ?? list[0].id)
         }
       } catch (error) {
         if (!active) return
-        setTreeError(error instanceof Error ? error.message : '加载设定列表失败')
+        setEntitiesError(error instanceof Error ? error.message : '加载实体列表失败')
       } finally {
-        if (active) setTreeLoading(false)
+        if (active) setEntitiesLoading(false)
       }
     }
-    loadTree()
-    return () => {
-      active = false
-    }
+    loadEntities()
+    return () => { active = false }
   }, [reloadToken])
 
-  const visibleFiles = useMemo(() => {
-    if (category === '全部') return settingFiles
-    return settingFiles.filter(file => inferCategory(file.path) === category)
-  }, [category, settingFiles])
+  // Count by frontend filter label
+  const counts = useMemo(() => {
+    const map = { '全部': entities.length }
+    for (const e of entities) {
+      const label = ENTITY_TYPE_MAP[e.type]?.label || e.type
+      map[label] = (map[label] || 0) + 1
+    }
+    return map
+  }, [entities])
 
+  // Filtered entities
+  const visibleEntities = useMemo(() => {
+    if (filter === '全部') return entities
+    const dbType = FILTER_TO_DB_TYPE[filter]
+    return entities.filter(e => e.type === dbType)
+  }, [filter, entities])
+
+  // Auto-select first visible entity when filter changes
   useEffect(() => {
-    if (visibleFiles.length === 0) {
-      setSelectedPath(null)
+    if (visibleEntities.length === 0) {
+      setSelectedId(null)
       return
     }
-    if (!visibleFiles.some(file => file.path === selectedPath)) {
-      setSelectedPath(visibleFiles[0].path)
+    if (!visibleEntities.some(e => e.id === selectedId)) {
+      setSelectedId(visibleEntities[0].id)
     }
-  }, [selectedPath, visibleFiles])
+  }, [selectedId, visibleEntities])
 
+  const selectedEntity = useMemo(
+    () => entities.find(e => e.id === selectedId) ?? null,
+    [selectedId, entities],
+  )
+
+  // Load file content when selection changes
   useEffect(() => {
-    if (!selectedPath) {
+    if (!selectedEntity?.file_path) {
       setDraft('')
       return
     }
@@ -88,7 +85,7 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
       setContentError('')
       setSaveState('loading')
       try {
-        const payload = await readFile(selectedPath)
+        const payload = await readFile(selectedEntity.file_path)
         if (!active) return
         setDraft(payload.content || '')
         setDirty(false)
@@ -100,37 +97,31 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
       }
     }
     loadContent()
-    return () => {
-      active = false
-    }
-  }, [reloadToken, selectedPath])
+    return () => { active = false }
+  }, [reloadToken, selectedEntity?.file_path])
 
+  // Sync context and page state
   useEffect(() => {
     onContextChange?.({
       page: 'settings',
-      selectedPath,
+      selectedPath: selectedEntity?.file_path ?? null,
       dirty,
     })
-    onPageStateChange?.('settings', { selectedPath, dirty })
-  }, [dirty, onContextChange, onPageStateChange, selectedPath])
+    onPageStateChange?.('settings', { selectedPath: selectedEntity?.file_path ?? null, dirty })
+  }, [dirty, onContextChange, onPageStateChange, selectedEntity?.file_path])
 
-  const selectedFile = useMemo(
-    () => settingFiles.find(file => file.path === selectedPath) ?? null,
-    [selectedPath, settingFiles],
-  )
-
-  function handleSelectFile(path) {
-    if (dirty && selectedPath !== path && !window.confirm('当前文件有未保存的修改，切换文件将丢失修改。确定继续？')) {
+  function handleSelectEntity(id) {
+    if (dirty && selectedId !== id && !window.confirm('当前文件有未保存的修改，切换将丢失修改。确定继续？')) {
       return
     }
-    setSelectedPath(path)
+    setSelectedId(id)
   }
 
   async function handleSave() {
-    if (!selectedPath) return
+    if (!selectedEntity?.file_path) return
     setSaveState('saving')
     try {
-      await saveFile(selectedPath, draft)
+      await saveFile(selectedEntity.file_path, draft)
       setDirty(false)
       setSaveState('saved')
       setTimeout(() => {
@@ -142,7 +133,9 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
     }
   }
 
-  const selectedCategory = selectedFile ? inferCategory(selectedFile.path) : category
+  const selectedLabel = selectedEntity
+    ? (ENTITY_TYPE_MAP[selectedEntity.type]?.label || selectedEntity.type)
+    : filter
 
   return (
     <section className="workbench-page chapter-page-shell">
@@ -151,45 +144,51 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
         <span className="card-badge badge-cyan">真实工作区</span>
       </div>
 
-      {(loading || treeLoading) && <div className="workbench-panel">正在加载设定工作区…</div>}
-      {(loadError || treeError) && (
+      {(loading || entitiesLoading) && <div className="workbench-panel">正在加载设定工作区…</div>}
+      {(loadError || entitiesError) && (
         <div className="workbench-panel">
-          <p className="error-text">{loadError || treeError}</p>
-          <button type="button" className="workbench-primary-button" onClick={onRetry}>重新加载摘要</button>
+          <p className="error-text">{loadError || entitiesError}</p>
+          <button type="button" className="workbench-primary-button" onClick={onRetry}>重新加载</button>
         </div>
       )}
 
-      <div className="chapter-workspace">
-        <aside className="workbench-panel chapter-list-panel">
-          <h3>设定分类</h3>
+      <div className="chapter-workspace setting-workspace">
+        <aside className="workbench-panel setting-list-panel">
+          <h3>实体分类</h3>
           <div className="setting-category-list">
-            {CATEGORIES.map(item => (
+            {ENTITY_FILTER_CATEGORIES.map(cat => (
               <button
-                key={item}
+                key={cat}
                 type="button"
-                className={`setting-category-button ${category === item ? 'active' : ''}`}
-                onClick={() => setCategory(item)}
+                className={`setting-category-button ${filter === cat ? 'active' : ''}`}
+                onClick={() => setFilter(cat)}
               >
-                {item}
+                {cat}({counts[cat] || 0})
               </button>
             ))}
           </div>
 
           <div className="chapter-file-list settings-file-list">
-            {visibleFiles.length === 0 ? (
-              <p className="empty-text">当前分类下暂无设定文件。</p>
+            {visibleEntities.length === 0 ? (
+              <p className="empty-text">当前分类下暂无实体。</p>
             ) : (
-              visibleFiles.map(file => (
-                <button
-                  key={file.path}
-                  type="button"
-                  className={`chapter-file-button ${selectedPath === file.path ? 'active' : ''}`}
-                  onClick={() => handleSelectFile(file.path)}
-                >
-                  <span>{file.name}</span>
-                  <span className="chapter-file-meta">{inferCategory(file.path)}</span>
-                </button>
-              ))
+              visibleEntities.map(entity => {
+                const info = ENTITY_TYPE_MAP[entity.type]
+                return (
+                  <button
+                    key={entity.id}
+                    type="button"
+                    className={`setting-entity-card ${selectedId === entity.id ? 'active' : ''}`}
+                    onClick={() => handleSelectEntity(entity.id)}
+                  >
+                    <span className="setting-entity-name">
+                      <span className="setting-entity-icon">{info?.icon || '📄'}</span>
+                      {entity.canonical_name}
+                    </span>
+                    <span className="setting-entity-desc">{entity.desc || ''}</span>
+                  </button>
+                )
+              })
             )}
           </div>
         </aside>
@@ -197,11 +196,11 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
         <div className="workbench-panel chapter-editor-panel">
           <div className="chapter-editor-header">
             <div>
-              <h3>{selectedFile?.name || '未选择设定文件'}</h3>
-              <p className="empty-text">{selectedPath || '请先从左侧选择设定文件'}</p>
+              <h3>{selectedEntity?.canonical_name || '未选择实体'}</h3>
+              <p className="empty-text">{selectedEntity?.file_path || '请先从左侧选择实体'}</p>
             </div>
             <div className="chapter-editor-actions">
-              <span className="card-badge badge-cyan">{selectedCategory}</span>
+              <span className="card-badge badge-cyan">{selectedLabel}</span>
               <span className={`card-badge ${saveState === 'saved' ? 'badge-green' : dirty ? 'badge-amber' : 'badge-blue'}`}>
                 {saveState === 'saved' ? '已保存' : dirty ? '未保存' : '已同步'}
               </span>
@@ -209,7 +208,7 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
                 type="button"
                 className="workbench-primary-button"
                 onClick={handleSave}
-                disabled={!selectedPath || saveState === 'saving' || saveState === 'loading'}
+                disabled={!selectedEntity?.file_path || saveState === 'saving' || saveState === 'loading'}
               >
                 {saveState === 'saving' ? '保存中…' : '保存'}
               </button>
@@ -217,7 +216,7 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
           </div>
 
           <div className="chapter-placeholder-actions">
-            <button type="button" className="workbench-nav-button" disabled>检查冲突</button>
+            <button type="button" className="workbench-nav-button disabled-action-btn" disabled>检查冲突 🔒</button>
           </div>
 
           {contentError ? <p className="error-text">{contentError}</p> : null}
@@ -229,8 +228,8 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
               setDraft(event.target.value)
               setDirty(true)
             }}
-            placeholder="在这里编辑人物、势力、地点或世界观设定…"
-            disabled={!selectedPath}
+            placeholder="在这里编辑人物、势力、地点或招式设定…"
+            disabled={!selectedEntity?.file_path}
           />
         </div>
       </div>
