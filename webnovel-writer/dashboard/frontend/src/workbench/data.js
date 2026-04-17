@@ -103,7 +103,7 @@ export function resolveTargetPage(actionType) {
   return null
 }
 
-const PAGE_LABELS = { chapters: '章节页', outline: '大纲页', settings: '设定页' }
+export const PAGE_LABELS = { chapters: '章节页', outline: '大纲页', settings: '设定页' }
 
 export function buildCompletionNotice({ activePage, actionType, summary } = {}) {
   const targetPage = resolveTargetPage(actionType)

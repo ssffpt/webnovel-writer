@@ -128,9 +128,10 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
         if not title or not isinstance(title, str) or not title.strip():
             raise HTTPException(400, "title 必填")
         result = create_project(payload, _PACKAGE_ROOT)
-        if result.get("success"):
-            _project_root = Path(result["project_root"])
-            _restart_watcher()
+        if not result.get("success"):
+            raise HTTPException(400, result.get("error", "项目创建失败"))
+        _project_root = Path(result["project_root"])
+        _restart_watcher()
         return result
 
     @app.get("/api/projects")
@@ -141,8 +142,7 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
     def api_switch_project(payload: dict):
         global _project_root
         target = payload.get("path", "")
-        current = _project_root if _project_root else Path(".")
-        result = switch_project(target, current)
+        result = switch_project(target)
         if not result.get("success"):
             raise HTTPException(400, result.get("error", "切换失败"))
         _project_root = Path(result["project_root"])

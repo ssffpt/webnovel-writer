@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -180,8 +181,6 @@ def build_outline_tree(project_root: Path) -> dict[str, Any]:
 
     返回 { files, volumes, total_volumes }。
     """
-    import re
-
     outline_dir = project_root / "大纲"
 
     # 扫描所有 .md 文件

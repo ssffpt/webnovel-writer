@@ -118,7 +118,7 @@ def list_golden_finger_types(package_root: Path) -> dict:
         in_table = False
         for line in text.splitlines():
             stripped = line.strip()
-            if "类型速查表" in stripped or "类型" in stripped and "|---" in stripped:
+            if ("类型速查表" in stripped) or (("类型" in stripped) and ("|---" in stripped)):
                 in_table = True
                 continue
             if in_table and stripped.startswith("|"):

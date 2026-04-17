@@ -12,7 +12,16 @@ const DEFAULT_FORM = {
   golden_finger_type: 'none',
 }
 
-export default function CreateWizard({ open, onClose, onCreated, genres, goldenFingerTypes, prefillData }) {
+export default function CreateWizard({
+  open,
+  onClose,
+  onCreated,
+  genres,
+  genresLoading = false,
+  genresLoadError = '',
+  goldenFingerTypes,
+  prefillData,
+}) {
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({ ...DEFAULT_FORM, ...prefillData })
   const [creating, setCreating] = useState(false)

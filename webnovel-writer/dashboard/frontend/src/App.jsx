@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  createProject,
   createTask,
   fetchCurrentTask,
   fetchGenres,
@@ -15,7 +14,6 @@ import {
 import {
   buildChatReplyModel,
   buildCompletionNotice,
-  buildRightSidebarModel,
   buildTopBarModel,
   createInitialWorkbenchState,
   getProjectStatus,
@@ -31,7 +29,7 @@ import ChapterPage from './workbench/ChapterPage.jsx'
 import OutlinePage from './workbench/OutlinePage.jsx'
 import SettingPage from './workbench/SettingPage.jsx'
 
-// --- Inline Conflict Dialog ---
+// --- Dialogs ---
 
 function ConflictDialog({ file, onReload, onKeep }) {
   return (
@@ -45,6 +43,26 @@ function ConflictDialog({ file, onReload, onKeep }) {
           </button>
           <button type="button" className="workbench-nav-button" onClick={onKeep}>
             保留我的修改
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function UnsavedChangesDialog({ visible, message, onConfirm, onCancel }) {
+  if (!visible) return null
+  return (
+    <div className="conflict-dialog-overlay">
+      <div className="conflict-dialog">
+        <h3>存在未保存内容</h3>
+        <p>{message}</p>
+        <div className="conflict-dialog-actions">
+          <button type="button" className="workbench-primary-button" onClick={onConfirm}>
+            继续
+          </button>
+          <button type="button" className="workbench-nav-button" onClick={onCancel}>
+            取消
           </button>
         </div>
       </div>
@@ -88,7 +106,14 @@ export default function App() {
   const [focusModeActive, setFocusModeActive] = useState(false)
   const [recentActivities, setRecentActivities] = useState([])
   const [conflictDialog, setConflictDialog] = useState({ visible: false, file: null })
+  const [unsavedDialog, setUnsavedDialog] = useState({
+    visible: false,
+    message: '',
+    onConfirm: null,
+  })
   const [genres, setGenres] = useState([])
+  const [genresLoading, setGenresLoading] = useState(false)
+  const [genresLoadError, setGenresLoadError] = useState('')
   const [goldenFingerTypes, setGoldenFingerTypes] = useState([])
 
   // --- Derived values (must be defined before useEffects that reference them) ---
@@ -139,12 +164,19 @@ export default function App() {
 
   // --- Action handlers (handleRunAction must be before handleRetryAction) ---
 
-  const handleRunAction = useCallback((action) => {
+  const closeUnsavedDialog = useCallback(() => {
+    setUnsavedDialog({ visible: false, message: '', onConfirm: null })
+  }, [])
+
+  const confirmUnsavedDialog = useCallback(() => {
+    const callback = unsavedDialog.onConfirm
+    closeUnsavedDialog()
+    callback?.()
+  }, [closeUnsavedDialog, unsavedDialog.onConfirm])
+
+  const executeRunAction = useCallback((action) => {
     async function run() {
       if (!action) return
-      if (shouldConfirmAction(sidebarContext) && !window.confirm('当前页面有未保存的修改，执行动作可能覆盖内容。确定继续？')) {
-        return
-      }
       const taskName = action.label || '执行动作'
 
       lastActionRef.current = action
@@ -211,6 +243,19 @@ export default function App() {
     run()
   }, [sidebarContext])
 
+  const handleRunAction = useCallback((action) => {
+    if (!action) return
+    if (shouldConfirmAction(sidebarContext)) {
+      setUnsavedDialog({
+        visible: true,
+        message: '当前页面有未保存的修改，执行动作可能覆盖内容。确定继续？',
+        onConfirm: () => executeRunAction(action),
+      })
+      return
+    }
+    executeRunAction(action)
+  }, [executeRunAction, sidebarContext])
+
   const handleRetryAction = useCallback(() => {
     if (lastActionRef.current) {
       handleRunAction(lastActionRef.current)
@@ -222,7 +267,12 @@ export default function App() {
   }, [])
 
   const handleSelectPage = useCallback((page) => {
-    if (sidebarContext.dirty && !window.confirm('当前页面有未保存的修改，确定要离开吗？')) {
+    if (sidebarContext.dirty) {
+      setUnsavedDialog({
+        visible: true,
+        message: '当前页面有未保存的修改，切换页面可能丢失修改。确定继续？',
+        onConfirm: () => setWorkbenchState(prev => ({ ...prev, page })),
+      })
       return
     }
     setWorkbenchState(prev => ({ ...prev, page }))
@@ -232,17 +282,30 @@ export default function App() {
     setWorkbenchState(prev => ({ ...prev, page }))
   }, [])
 
-  const handleCreateNew = useCallback(() => {
-    setWizardPrefill(null)
-    setShowWizard(true)
-    // Load genres and gf types if not already loaded
+  const ensureWizardOptionsLoaded = useCallback(() => {
     if (genres.length === 0) {
-      fetchGenres().then(r => setGenres(r.genres || [])).catch(() => {})
+      setGenresLoading(true)
+      setGenresLoadError('')
+      fetchGenres()
+        .then(r => setGenres(r.genres || []))
+        .catch(() => setGenresLoadError('题材加载失败，请稍后重试'))
+        .finally(() => setGenresLoading(false))
     }
     if (goldenFingerTypes.length === 0) {
       fetchGoldenFingerTypes().then(r => setGoldenFingerTypes(r.types || [])).catch(() => {})
     }
   }, [genres.length, goldenFingerTypes.length])
+
+  const handleCreateNew = useCallback(() => {
+    setWizardPrefill(null)
+    setShowWizard(true)
+    ensureWizardOptionsLoaded()
+  }, [ensureWizardOptionsLoaded])
+
+  const handleContinueSetup = useCallback(() => {
+    setShowWizard(true)
+    ensureWizardOptionsLoaded()
+  }, [ensureWizardOptionsLoaded])
 
   const handleSwitchProject = useCallback(async (path) => {
     try {
@@ -391,18 +454,6 @@ export default function App() {
     [activePage, workbenchState.currentTask, workbenchState.summary],
   )
 
-  const aiAssistantModel = useMemo(
-    () => buildRightSidebarModel({
-      context: sidebarContext,
-      chatMessages: workbenchState.chatMessages,
-      suggestedActions: workbenchState.suggestedActions,
-      currentTask: workbenchState.currentTask,
-      chatPending,
-      activePage,
-    }),
-    [activePage, chatPending, sidebarContext, workbenchState.chatMessages, workbenchState.currentTask, workbenchState.suggestedActions],
-  )
-
   const handleSendMessage = useCallback(async (message) => {
     const trimmed = message.trim()
     if (!trimmed) return
@@ -464,6 +515,7 @@ export default function App() {
     projectInfo,
     recentActivities,
     onCreateNew: handleCreateNew,
+    onContinueSetup: handleContinueSetup,
     onNavigateToPage: handleNavigateToPage,
     onRunAction: handleRunAction,
     onFocusModeChange: handleFocusModeChange,
@@ -499,7 +551,7 @@ export default function App() {
         <AIAssistant
           chatMessages={workbenchState.chatMessages}
           suggestedActions={workbenchState.suggestedActions}
-          currentTask={aiAssistantModel.currentTask}
+          currentTask={workbenchState.currentTask}
           chatPending={chatPending}
           onSendMessage={handleSendMessage}
           onRunAction={handleRunAction}
@@ -517,6 +569,8 @@ export default function App() {
           onClose={() => setShowWizard(false)}
           onCreated={handleWizardCreated}
           genres={genres}
+          genresLoading={genresLoading}
+          genresLoadError={genresLoadError}
           goldenFingerTypes={goldenFingerTypes}
           prefillData={wizardPrefill}
         />
@@ -533,6 +587,13 @@ export default function App() {
           onKeep={() => setConflictDialog({ visible: false, file: null })}
         />
       )}
+
+      <UnsavedChangesDialog
+        visible={unsavedDialog.visible}
+        message={unsavedDialog.message}
+        onConfirm={confirmUnsavedDialog}
+        onCancel={closeUnsavedDialog}
+      />
     </div>
   )
 }

@@ -13,6 +13,11 @@ function flattenFiles(nodes = []) {
   return files
 }
 
+function extractChapterNumber(fileName = '') {
+  const match = String(fileName).match(/(\d+)/)
+  return match ? Number(match[1]) : null
+}
+
 export default function ChapterPage({
   loading,
   loadError,
@@ -40,8 +45,14 @@ export default function ChapterPage({
   // Reverse order chapter list (newest first)
   const reversedFiles = useMemo(() => chapterFiles.slice().reverse(), [chapterFiles])
 
-  // Next chapter number for "写第N章" button
-  const nextChapterNum = chapterFiles.length + 1
+  // Next chapter number for "写第N章" button（按最大章节号+1，支持编号间隙）
+  const nextChapterNum = useMemo(() => {
+    const maxNum = chapterFiles.reduce((max, file) => {
+      const num = extractChapterNumber(file.name)
+      return Number.isFinite(num) ? Math.max(max, num) : max
+    }, 0)
+    return maxNum + 1
+  }, [chapterFiles])
 
   // --- ESC to exit focus mode ---
   useEffect(() => {
@@ -125,10 +136,22 @@ export default function ChapterPage({
   )
 
   function handleSelectFile(path) {
-    if (dirty && selectedPath !== path && !window.confirm('当前文件有未保存的修改，切换文件将丢失修改。确定继续？')) {
+    if (dirty && selectedPath !== path) {
+      setPendingSwitchPath(path)
       return
     }
     setSelectedPath(path)
+  }
+
+  function confirmSwitchFile() {
+    if (pendingSwitchPath) {
+      setSelectedPath(pendingSwitchPath)
+    }
+    setPendingSwitchPath(null)
+  }
+
+  function cancelSwitchFile() {
+    setPendingSwitchPath(null)
   }
 
   async function handleSave() {
@@ -293,6 +316,19 @@ export default function ChapterPage({
           </div>
         </div>
       </div>
+
+      {pendingSwitchPath && (
+        <div className="conflict-dialog-overlay">
+          <div className="conflict-dialog">
+            <h3>存在未保存内容</h3>
+            <p>当前文件有未保存的修改，切换文件将丢失修改。确定继续？</p>
+            <div className="conflict-dialog-actions">
+              <button type="button" className="workbench-primary-button" onClick={confirmSwitchFile}>继续</button>
+              <button type="button" className="workbench-nav-button" onClick={cancelSwitchFile}>取消</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

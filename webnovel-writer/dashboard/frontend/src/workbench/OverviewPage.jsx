@@ -26,9 +26,9 @@ function StepProgressBar({ steps }) {
 function LoadingState() {
   return (
     <section className="workbench-page">
-      <div className="workbench-panel" style={{ textAlign: 'center', padding: '40px 20px' }}>
+      <div className="workbench-panel overview-loading-panel">
         <div className="loading-spinner" />
-        <p style={{ marginTop: 16, color: 'var(--text-sub)' }}>正在加载项目信息…</p>
+        <p className="overview-loading-text">正在加载项目信息…</p>
       </div>
     </section>
   )
@@ -53,13 +53,13 @@ function ErrorState({ error, onRetry }) {
 function EmptyState({ onCreateNew }) {
   return (
     <section className="workbench-page">
-      <div className="empty-state" style={{ padding: '80px 20px' }}>
-        <div className="empty-icon" style={{ fontSize: 64 }}>📖</div>
-        <h2 style={{ marginBottom: 12, fontSize: 24 }}>欢迎使用网文创作工作台</h2>
-        <p style={{ color: 'var(--text-sub)', marginBottom: 24, fontSize: 15 }}>
+      <div className="empty-state overview-empty-state">
+        <div className="empty-icon overview-empty-icon">📖</div>
+        <h2 className="overview-empty-title">欢迎使用网文创作工作台</h2>
+        <p className="overview-empty-desc">
           创建你的第一部小说，开始 AI 辅助创作之旅
         </p>
-        <button type="button" className="workbench-primary-button" onClick={onCreateNew} style={{ fontSize: 16, padding: '14px 28px' }}>
+        <button type="button" className="workbench-primary-button overview-empty-button" onClick={onCreateNew}>
           ＋ 创建新小说
         </button>
       </div>
@@ -84,7 +84,7 @@ function IncompleteState({ model, projectInfo, onContinueSetup }) {
 
       <StepProgressBar steps={steps} />
 
-      <div className="workbench-grid" style={{ marginTop: 20 }}>
+      <div className="workbench-grid overview-grid-spaced">
         <div className="workbench-panel">
           <h3>项目概况</h3>
           <p>书名：{model.project?.title || '未命名项目'}</p>
@@ -93,14 +93,14 @@ function IncompleteState({ model, projectInfo, onContinueSetup }) {
         </div>
       </div>
 
-      <div className="workbench-panel" style={{ marginTop: 16, borderColor: 'var(--accent-amber)' }}>
-        <p style={{ fontWeight: 700, color: 'var(--accent-amber)' }}>
+      <div className="workbench-panel overview-incomplete-panel">
+        <p className="overview-incomplete-title">
           项目设置尚未完成
         </p>
-        <p style={{ marginTop: 8, color: 'var(--text-sub)', fontSize: 14 }}>
+        <p className="overview-incomplete-desc">
           完成项目设定后即可开始创作
         </p>
-        <button type="button" className="workbench-primary-button" onClick={onContinueSetup || (() => {})} style={{ marginTop: 12 }}>
+        <button type="button" className="workbench-primary-button overview-incomplete-button" onClick={onContinueSetup || (() => {})}>
           继续设置
         </button>
       </div>
@@ -128,11 +128,11 @@ function ReadyState({ model, projectInfo, recentActivities, onNavigateToPage, on
       <StepProgressBar steps={steps} />
 
       {suggestion && (
-        <div className="next-step-card" style={{ marginTop: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="next-step-card overview-next-step-card">
+          <div className="overview-next-step-header">
             <div>
-              <h3 style={{ marginBottom: 4 }}>下一步</h3>
-              <p style={{ color: 'var(--text-sub)', fontSize: 14 }}>{suggestion.text}</p>
+              <h3 className="overview-next-step-title">下一步</h3>
+              <p className="overview-next-step-text">{suggestion.text}</p>
             </div>
             <button
               type="button"
@@ -152,7 +152,7 @@ function ReadyState({ model, projectInfo, recentActivities, onNavigateToPage, on
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
+      <div className="overview-two-col-grid">
         <div className="workbench-panel">
           <h3>项目概况</h3>
           <p>书名：{model.project?.title || '未命名项目'}</p>
@@ -170,8 +170,8 @@ function ReadyState({ model, projectInfo, recentActivities, onNavigateToPage, on
           ) : (
             <ul className="workbench-meta-list">
               {recentActivities.slice(0, 5).map((activity, i) => (
-                <li key={`activity-${i}`} style={{ fontSize: 13, padding: '4px 0' }}>
-                  <span style={{ color: 'var(--text-mute)', marginRight: 8 }}>
+                <li key={`activity-${i}`} className="overview-activity-item">
+                  <span className="overview-activity-time">
                     {activity.time || activity.timestamp || ''}
                   </span>
                   <span>{activity.message || activity.description || JSON.stringify(activity)}</span>

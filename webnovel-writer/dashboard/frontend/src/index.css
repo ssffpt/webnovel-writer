@@ -1857,3 +1857,106 @@ body {
   color: var(--text-sub);
 }
 
+/* ---------------------------------------------------------------------------
+   Overview page utility classes
+   --------------------------------------------------------------------------- */
+
+.overview-loading-panel {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.overview-loading-text {
+  margin-top: 16px;
+  color: var(--text-sub);
+}
+
+.overview-empty-state {
+  padding: 80px 20px;
+}
+
+.overview-empty-icon {
+  font-size: 64px;
+}
+
+.overview-empty-title {
+  margin-bottom: 12px;
+  font-size: 24px;
+}
+
+.overview-empty-desc {
+  color: var(--text-sub);
+  margin-bottom: 24px;
+  font-size: 15px;
+}
+
+.overview-empty-button {
+  font-size: 16px;
+  padding: 14px 28px;
+}
+
+.overview-grid-spaced {
+  margin-top: 20px;
+}
+
+.overview-incomplete-panel {
+  margin-top: 16px;
+  border-color: var(--accent-amber);
+}
+
+.overview-incomplete-title {
+  font-weight: 700;
+  color: var(--accent-amber);
+}
+
+.overview-incomplete-desc {
+  margin-top: 8px;
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+.overview-incomplete-button {
+  margin-top: 12px;
+}
+
+.overview-next-step-card {
+  margin-top: 20px;
+}
+
+.overview-next-step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.overview-next-step-title {
+  margin-bottom: 4px;
+}
+
+.overview-next-step-text {
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+.overview-two-col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.overview-activity-item {
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.overview-activity-time {
+  color: var(--text-mute);
+  margin-right: 8px;
+}
+
+.outline-total-volumes {
+  margin-top: 10px;
+}
+

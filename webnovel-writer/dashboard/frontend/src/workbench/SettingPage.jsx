@@ -12,6 +12,7 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
   const [dirty, setDirty] = useState(false)
   const [saveState, setSaveState] = useState('idle')
   const [contentError, setContentError] = useState('')
+  const [pendingSwitchId, setPendingSwitchId] = useState(null)
 
   // Load all entities once
   useEffect(() => {
@@ -111,10 +112,22 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
   }, [dirty, onContextChange, onPageStateChange, selectedEntity?.file_path])
 
   function handleSelectEntity(id) {
-    if (dirty && selectedId !== id && !window.confirm('当前文件有未保存的修改，切换将丢失修改。确定继续？')) {
+    if (dirty && selectedId !== id) {
+      setPendingSwitchId(id)
       return
     }
     setSelectedId(id)
+  }
+
+  function confirmSwitchEntity() {
+    if (pendingSwitchId !== null) {
+      setSelectedId(pendingSwitchId)
+    }
+    setPendingSwitchId(null)
+  }
+
+  function cancelSwitchEntity() {
+    setPendingSwitchId(null)
   }
 
   async function handleSave() {
@@ -233,6 +246,19 @@ export default function SettingPage({ loading, loadError, onRetry, onContextChan
           />
         </div>
       </div>
+
+      {pendingSwitchId !== null && (
+        <div className="conflict-dialog-overlay">
+          <div className="conflict-dialog">
+            <h3>存在未保存内容</h3>
+            <p>当前文件有未保存的修改，切换将丢失修改。确定继续？</p>
+            <div className="conflict-dialog-actions">
+              <button type="button" className="workbench-primary-button" onClick={confirmSwitchEntity}>继续</button>
+              <button type="button" className="workbench-nav-button" onClick={cancelSwitchEntity}>取消</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

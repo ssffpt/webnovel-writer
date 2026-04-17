@@ -8,15 +8,14 @@ from __future__ import annotations
 import json
 import sqlite3
 import sys
-from asyncio import run
 from pathlib import Path
-from urllib.parse import urlencode
 
 REPO_WEBNOVEL_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_WEBNOVEL_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_WEBNOVEL_ROOT))
 
 from dashboard.app import create_app  # noqa: E402
+from dashboard.tests.test_phase1_contracts import request_json  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -109,65 +108,6 @@ def make_project(
         conn.close()
 
     return project_root
-
-
-def request_json(app, method: str, path: str, payload: dict | None = None, params: dict | None = None):
-    """直接通过 ASGI scope 调用 app，返回 (status_code, parsed_json)。"""
-    body = b""
-    raw_path = path
-    query_string = b""
-    if payload is not None:
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    if params:
-        query_string = urlencode(params, doseq=True).encode("utf-8")
-
-    async def _call():
-        messages: list[dict] = []
-        request_complete = False
-
-        async def receive():
-            nonlocal request_complete
-            if request_complete:
-                return {"type": "http.disconnect"}
-            request_complete = True
-            return {"type": "http.request", "body": body, "more_body": False}
-
-        async def send(message):
-            messages.append(message)
-
-        scope = {
-            "type": "http",
-            "asgi": {"version": "3.0"},
-            "http_version": "1.1",
-            "method": method,
-            "scheme": "http",
-            "path": raw_path,
-            "raw_path": raw_path.encode("utf-8"),
-            "query_string": query_string,
-            "headers": [
-                (b"host", b"testserver"),
-                (b"content-type", b"application/json"),
-            ],
-            "client": ("127.0.0.1", 12345),
-            "server": ("testserver", 80),
-        }
-
-        await app(scope, receive, send)
-
-        start = next(message for message in messages if message["type"] == "http.response.start")
-        body_chunks = [
-            message.get("body", b"")
-            for message in messages
-            if message["type"] == "http.response.body"
-        ]
-        response_body = b"".join(body_chunks).decode("utf-8")
-        try:
-            resp_payload = json.loads(response_body)
-        except json.JSONDecodeError:
-            resp_payload = {"_raw": response_body}
-        return start["status"], resp_payload
-
-    return run(_call())
 
 
 # ---------------------------------------------------------------------------

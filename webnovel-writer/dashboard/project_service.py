@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -166,7 +167,7 @@ def list_projects() -> dict:
     return {"projects": projects, "current": current}
 
 
-def switch_project(target_path: str, current_root: Path) -> dict:
+def switch_project(target_path: str) -> dict:
     """切换到目标项目。校验路径有效性，更新注册表。"""
     target = Path(target_path).resolve()
     state_path = target / ".webnovel" / "state.json"

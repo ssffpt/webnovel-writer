@@ -34,6 +34,7 @@ export default function OutlinePage({
   const [dirty, setDirty] = useState(false)
   const [saveState, setSaveState] = useState('idle')
   const [contentError, setContentError] = useState('')
+  const [pendingSwitchPath, setPendingSwitchPath] = useState(null)
 
   // Load outline tree
   useEffect(() => {
@@ -108,9 +109,21 @@ export default function OutlinePage({
 
   function handleSelectFile(path) {
     if (dirty && selectedPath !== path) {
-      if (!window.confirm('当前文件有未保存的修改，切换文件将丢失修改。确定继续？')) return
+      setPendingSwitchPath(path)
+      return
     }
     setSelectedPath(path)
+  }
+
+  function confirmSwitchFile() {
+    if (pendingSwitchPath) {
+      setSelectedPath(pendingSwitchPath)
+    }
+    setPendingSwitchPath(null)
+  }
+
+  function cancelSwitchFile() {
+    setPendingSwitchPath(null)
   }
 
   async function handleSave() {
@@ -207,7 +220,7 @@ export default function OutlinePage({
             ))}
           </ul>
           {treeData.total_volumes > 0 && (
-            <p className="chapter-file-meta" style={{ marginTop: '10px' }}>
+            <p className="chapter-file-meta outline-total-volumes">
               共 {treeData.total_volumes} 卷
             </p>
           )}
@@ -258,6 +271,19 @@ export default function OutlinePage({
           />
         </div>
       </div>
+
+      {pendingSwitchPath && (
+        <div className="conflict-dialog-overlay">
+          <div className="conflict-dialog">
+            <h3>存在未保存内容</h3>
+            <p>当前文件有未保存的修改，切换文件将丢失修改。确定继续？</p>
+            <div className="conflict-dialog-actions">
+              <button type="button" className="workbench-primary-button" onClick={confirmSwitchFile}>继续</button>
+              <button type="button" className="workbench-nav-button" onClick={cancelSwitchFile}>取消</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

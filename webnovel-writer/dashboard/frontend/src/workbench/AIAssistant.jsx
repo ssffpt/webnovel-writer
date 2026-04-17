@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-
-const PAGE_LABELS = { chapters: '章节页', outline: '大纲页', settings: '设定页' }
+import { PAGE_LABELS } from './data.js'
 
 export default function AIAssistant({
   chatMessages,
