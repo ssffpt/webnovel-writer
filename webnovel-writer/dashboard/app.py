@@ -59,10 +59,11 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def _lifespan(_: FastAPI):
-        webnovel = _webnovel_dir()
         _task_service.set_event_loop(asyncio.get_running_loop())
-        if webnovel.is_dir():
-            _watcher.start(webnovel, asyncio.get_running_loop())
+        if _project_root:
+            webnovel = _project_root / ".webnovel"
+            if webnovel.is_dir():
+                _watcher.start(webnovel, asyncio.get_running_loop())
         try:
             yield
         finally:
@@ -91,6 +92,17 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
 
     @app.get("/api/workbench/summary")
     def workbench_summary():
+        if _project_root is None:
+            return {
+                "pages": ["overview", "outline", "settings", "chapters"],
+                "project": {"title": None, "genre": None, "target_words": None, "target_chapters": None},
+                "progress": {"current_chapter": None, "current_volume": None, "total_words": 0},
+                "workspace_roots": [],
+                "workspaces": {},
+                "recent_tasks": [],
+                "recent_changes": [],
+                "next_suggestions": [],
+            }
         return load_project_summary(_get_project_root())
 
     def _restart_watcher():

@@ -150,6 +150,9 @@ export function shouldConfirmNavigation(context) {
 export function getProjectStatus(projectInfo) {
   if (!projectInfo) return 'no-project';
   const pi = projectInfo.project_info || projectInfo.project || {};
+  // 所有关键字段都为空 → 无项目
+  if (!pi.title && !pi.genre && !pi.target_words) return 'no-project';
+  // 有部分字段但不完整 → 未完成设置
   if (!pi.title || !pi.genre) return 'incomplete';
   return 'ready';
 }

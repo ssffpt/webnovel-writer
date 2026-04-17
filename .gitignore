@@ -50,3 +50,5 @@ claude_inventory.csv
 # Qoder local data (but track repowiki)
 .qoder/agents/
 .qoder/skills/
+
+.superpowers/

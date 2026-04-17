@@ -13,8 +13,8 @@ import webbrowser
 from pathlib import Path
 
 
-def _resolve_project_root(cli_root: str | None) -> Path:
-    """按优先级解析 PROJECT_ROOT：CLI > 环境变量 > .claude 指针 > CWD。"""
+def _resolve_project_root(cli_root: str | None) -> Path | None:
+    """按优先级解析 PROJECT_ROOT：CLI > 环境变量 > .claude 指针 > CWD > None。"""
     if cli_root:
         return Path(cli_root).resolve()
 
@@ -36,8 +36,8 @@ def _resolve_project_root(cli_root: str | None) -> Path:
     if (cwd / ".webnovel" / "state.json").is_file():
         return cwd.resolve()
 
-    print("ERROR: 无法定位 PROJECT_ROOT（需要包含 .webnovel/state.json 的目录）", file=sys.stderr)
-    sys.exit(1)
+    # 无项目——允许启动，用户通过创建向导新建
+    return None
 
 
 def main():
@@ -49,7 +49,10 @@ def main():
     args = parser.parse_args()
 
     project_root = _resolve_project_root(args.project_root)
-    print(f"项目路径: {project_root}")
+    if project_root:
+        print(f"项目路径: {project_root}")
+    else:
+        print("未找到项目，以空状态启动（可通过网页创建新项目）")
 
     # 延迟导入，以便先处理路径
     import uvicorn
