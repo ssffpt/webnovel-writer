@@ -38,6 +38,7 @@ export default function ChapterPage({
   const [loadContentError, setLoadContentError] = useState('')
   const [focusMode, setFocusMode] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [pendingSwitchPath, setPendingSwitchPath] = useState(null)
 
   // Word count (Chinese: count non-whitespace characters)
   const wordCount = useMemo(() => draft.replace(/\s/g, '').length, [draft])

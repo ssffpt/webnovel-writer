@@ -7,7 +7,7 @@ const BASE = '';  // 开发时由 vite proxy 代理到 FastAPI
 export async function fetchJSON(path, params = {}) {
     const url = new URL(path, window.location.origin);
     Object.entries(params).forEach(([k, v]) => {
-        if (v !== undefined && v !== null) url.searchParams.set(k, v);
+        if (v !== undefined && v !== null) url.searchParams.set(k, encodeURIComponent(v));
     });
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
