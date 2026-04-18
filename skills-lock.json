@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "create-handover-test": {
+      "source": "AgentMantis/test-skills",
+      "sourceType": "github",
+      "computedHash": "2652f7549347bfa3b689339275f1b55c0018feacb66f204565ef857b79a8be8b"
+    },
+    "create-pom": {
+      "source": "AgentMantis/test-skills",
+      "sourceType": "github",
+      "computedHash": "68aaccdb12b8ad06dd782856651a47cad23b299e7d4407d0758e39fd4a18b7c2"
+    },
+    "create-regression-test": {
+      "source": "AgentMantis/test-skills",
+      "sourceType": "github",
+      "computedHash": "b65da6cc343e244828d85d5a84b5d82aeabaf366aaf66130657ede9706694f45"
+    },
+    "e2e-test-conventions": {
+      "source": "AgentMantis/test-skills",
+      "sourceType": "github",
+      "computedHash": "5f0890cd840cf812a54a5fadd66befc0b33aafae1a78687b49dcfeea3e085228"
+    },
+    "e2e-test-suite-init": {
+      "source": "AgentMantis/test-skills",
+      "sourceType": "github",
+      "computedHash": "ebea0ee3a547c4339800826f499be6ee3c1374e7bdf984757c672949254e00d3"
+    },
+    "promote-handover-test": {
+      "source": "AgentMantis/test-skills",
+      "sourceType": "github",
+      "computedHash": "480e6d505c14c341d3d01d274a50aca8fc72c20ed4bc795a1821bf742af6800e"
+    }
+  }
+}
