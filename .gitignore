@@ -49,5 +49,10 @@ claude_inventory.csv
 .qoder/agents/
 .qoder/skills/
 
+# Playwright temp artifacts
+.playwright-mcp/
+test-results/
+e2e/e2e/reports/
+
 .superpowers/
 .gstack/
