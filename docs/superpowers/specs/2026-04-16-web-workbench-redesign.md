@@ -24,6 +24,62 @@
 
 审查不是必经步骤，而是可选的辅助工具（AI 6轴审稿：爽点密度、一致性、节奏、OOC、连贯性、吸引力）。
 
+## 核心用户流程
+
+### 流程 1：选章纲 → 生成章节
+
+**触发入口：** 大纲页选中章纲节点，点击动作条"开始写本章"按钮
+
+**交互序列：**
+1. 用户在大纲页选中章纲节点（章节点有 `readyToWrite` 状态）
+2. 底部动作条显示"开始写本章"按钮（可点击）
+3. 用户点击按钮 → 前端构造 `suggested_action`（`type: write_chapter`）
+4. 动作卡在右栏弹出，显示：标题、说明、作用对象（`page: outline`, `path: 章节文件路径`）、预计结果、执行/取消按钮
+5. 用户点击"执行" → `POST /api/tasks` 创建任务
+6. 任务执行中，右栏显示任务进度和日志
+7. 任务完成（成功或失败）→ 右栏显示结果，动作卡消失
+
+**完成判定：** `write_chapter` 任务状态为 `completed`（真实生成章节内容）
+
+---
+
+### 流程 2：编辑正文 → 审查本章
+
+**触发入口：** 章节页编辑器操作区，点击"审查本章"按钮
+
+**交互序列：**
+1. 用户在章节页编辑某章节
+2. 编辑器操作区有"按大纲生成"和"审查本章"两个按钮
+3. 用户点击"审查本章" → 构造 `suggested_action`（`type: review_chapter`）
+4. 动作卡在右栏弹出，显示审查说明
+5. 用户点击"执行" → 创建 `review_chapter` 任务
+6. 任务完成后，章节页编辑区下方出现 AI 结果摘要
+
+**完成判定：** `review_chapter` 任务状态为 `completed`，摘要显示在编辑区下方
+
+---
+
+### 流程 3：修改设定 → 检查冲突
+
+**触发入口：** 设定页编辑完某人物/世界观文档后，点击"检查冲突"按钮
+
+**交互序列：**
+1. 用户在设定页编辑某个实体节点（如人物）
+2. 编辑区下方显示关联提示区（`linkedChapterCount`/`recentChapters`/`conflicts`）
+3. "检查冲突"按钮可点击（不再🔒）
+4. 用户点击"检查冲突" → 构造 `suggested_action`（`type: inspect_setting`）
+5. 动作卡弹出，显示冲突检查说明
+6. 用户点击"执行" → 创建 `inspect_setting` 任务
+7. 任务完成后，关联提示区更新冲突列表
+
+**关键规则：** 没有真实执行器时，以上三条流程都必须返回 `failed` 状态 + 明确错误信息（诚实失败原则）
+
+**验证标准：**
+- spec 中明确三条流程的交互序列
+- spec 中明确按钮入口
+- spec 中明确动作卡合同
+- spec 中明确完成判定标准
+
 ## 项目状态
 
 | 状态 | 判断条件 | 总览页行为 |
@@ -39,10 +95,12 @@
 - **右侧**：项目切换器（醒目样式）；无项目时显示"选择项目 ▾"
 
 ### AI 助手
-- 右下角浮动 💬 按钮，全局可用
-- 默认收起，点击展开对话框
-- 对话框包含：消息区 + 动作卡 + 输入框
-- 不再占据固定侧栏面板
+
+三种状态：
+
+- **桌面端（>=1200px）**：常驻右栏，宽度 320px，始终可见，不随页面滚动
+- **移动端（<1200px）**：退化右下角浮动 💬 按钮，点击展开对话框
+- **专注模式**：隐藏右栏，全屏写作
 
 ### 禁用按钮策略
 - 不可用操作：虚线边框 + 🔒 图标 + tooltip 说明条件（如"先完成大纲才能生成章纲"）
@@ -74,27 +132,68 @@
    - 大号操作按钮（发光效果）
    - 辅助操作按钮（审查等）
 
-3. **项目概况 + 最近动态**（并排）
-   - 项目概况：书名、题材、当前章节、总字数、创建日期
-   - 最近动态：合并任务+修改为单条时间线（时间 + 事件描述）
+3. **快捷入口卡组**（quickActions）
+   - 四个快捷入口按钮：继续写作 / 去大纲 / 去设定 / 查看当前任务
+   - 点击行为：继续写作 → 跳转章节页；去大纲 → 跳转大纲页；去设定 → 跳转设定页；查看当前任务 → 跳转对应任务详情
+
+4. **创作进度**
+   - 章节进度条：已写章节数 / 目标章节数 + 百分比
+   - 字数进度条：已写字数 / 目标字数 + 百分比
+   - 进度数据来自 `GET /api/workbench/summary` 的 `progress` 字段
+
+5. **项目概况 + 最近动态**（并排）
+   - 项目概况：`project.path`（项目路径）、书名、题材、当前章节、总字数、`created_at`（创建时间）
+   - 最近动态时间线（activityTimeline）：合并任务+修改为单条时间线（时间 + 事件描述），每条动态可点击跳转
+
+6. **动态可点击跳转规则**
+   - `type: "file_modified"` — 点击跳转到对应页面（章节/大纲/设定）并选中该文件
+   - `type: "task_completed"` — 点击跳转到已完成任务的详情页（如章节页）
+   - `type: "chapter_created"` — 点击跳转到对应章节页
+   - `type: "task_failed"` — 点击展开失败详情，提供重试入口
 
 ### 大纲页
 
-- **左侧**（220px）：树形缩进列表
-  - 总纲 → 第N卷 → 卷纲/节拍表/时间线
+**左侧**（220px）：三级树形缩进列表
+- **总纲**（顶层，根节点）— 点击打开总纲文件
+- **卷纲**（第二级，每卷一个节点）
   - 已有卷标注 ✓
-  - 待生成项改为可点击操作："＋ 生成第N卷大纲"
-- **右侧**：大编辑区
-- **按钮**：保存、生成卷纲🔒、生成章纲🔒（带 tooltip）
+  - 待生成卷显示为可点击操作："＋ 生成第N卷大纲"
+- **章纲**（第三级，每章一个节点）
+  - 章节点状态标记：
+    - `hasOutline` — 是否有章纲（显示 📋 图标）
+    - `hasDraft` — 是否有正文草稿（显示 📄 图标）
+    - `readyToWrite` — 建议开始写作（高亮提示）
+  - 无章纲时显示为可点击操作："＋ 生成第N章大纲"
+
+**辅助信息区**（位于编辑器上方）
+- 显示：已拆章数 / 已有正文数 / 建议下一步
+- 随选中节点动态更新
+
+**右侧**：大编辑区
+
+**动作条按钮**：
+- **保存**：始终可用
+- **生成卷纲**：🔒 动态启用 — 当前卷无章纲时可用（当前选中卷节点下所有章均无章纲）
+- **生成章纲**：🔒 动态启用 — 当前章无章纲时可用
+- **开始写本章**：章节点 `readyToWrite=true` 时显示（章有大纲但无正文时建议）
 
 ### 设定页
 
+设定页使用 **entity + setting_doc 双源模型**：
+
 - **左侧**（220px）：卡片式实体列表
-  - 分类筛选标签（含数量）：全部(N) / 人物(N) / 势力(N) / 地点(N) / 世界观(N)
+  - **节点分类**（筛选标签）：全部 / 人物 / 势力 / 地点 / 世界观(N) / 物品 / 招式
+    - entity 节点（实体）：人物、势力、地点、物品、招式
+    - setting_doc 节点（世界观文档）：独立的 MD 文件
   - 每张卡片：实体名（含图标）+ 一行摘要（单行省略）
   - 选中卡片高亮
+  - **新建条目**按钮：点击弹出表单，填写分类和名称，新建后自动选中和刷新
 - **右侧**：大编辑区
-- **按钮**：保存、检查冲突🔒（带 tooltip）
+- **关联提示区**（编辑区下方）：
+  - `linkedChapterCount`：关联章节数
+  - `recentChapters`：最近出现章节列表
+  - `conflicts`：潜在冲突列表（可为空但结构存在）
+- **按钮**：保存、检查冲突（点击后构造 `suggested_action`，调用 settings node insights API 获取冲突数据）
 
 ### 章节页
 
@@ -141,6 +240,10 @@
 | 总览页 | 点击"审查" | 跳转到章节页，打开 AI 助手并发送审查指令 |
 | 总览页 | 点击"继续设置" | 打开创建向导（预填已有信息） |
 | 总览页 | 最近动态中点击文件 | 跳转到对应页面（章节/大纲/设定）并选中该文件 |
+| 总览页 | 点击"继续写作"（quickActions） | 跳转到章节页 |
+| 总览页 | 点击"去大纲"（quickActions） | 跳转到大纲页 |
+| 总览页 | 点击"去设定"（quickActions） | 跳转到设定页 |
+| 总览页 | 点击"查看当前任务"（quickActions） | 跳转到任务详情页 |
 | 大纲页 | 点击"＋ 生成第N卷大纲" | 打开 AI 助手并发送规划指令（后端对接后实际执行） |
 | 章节页 | 点击"＋ 写第N章" | 创建空文件并打开编辑器 |
 | 章节页 | 点击"按大纲生成" | 打开 AI 助手并发送写作指令 |
@@ -159,6 +262,22 @@
 |------|-----|------|
 | 项目信息 | `GET /api/project/info` | 总览页项目概况、项目状态判断 |
 | Workbench 摘要 | `GET /api/workbench/summary` | 总览页项目概况 + 进度 |
+| Workbench 摘要增强字段 | `GET /api/workbench/summary` 返回 `summary` 对象 | 详见下方"summary 增强字段" |
+
+**summary 增强字段**（`GET /api/workbench/summary` 返回的 `summary` 对象）：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `project.path` | string | 项目根目录路径 |
+| `created_at` | string | 项目创建时间（ISO 8601） |
+| `progress.target_words` | number | 目标总字数 |
+| `progress.target_chapters` | number | 目标总章节数 |
+| `progress.chapter_completion_ratio` | number | 章节完成比例（0~1） |
+| `progress.word_completion_ratio` | number | 字数完成比例（0~1） |
+| `outline_files` | string[] | 大纲文件路径列表 |
+| `setting_files` | string[] | 设定文件路径列表 |
+| `recent_tasks` | object[] | 最近任务（来自 activity_service） |
+| `recent_changes` | object[] | 最近文件变更（来自 activity_service） |
 | 文件树 | `GET /api/files/tree` | 大纲页树结构、章节页列表 |
 | 读取文件 | `GET /api/files/read` | 编辑区加载文件内容 |
 | 保存文件 | `POST /api/files/save` | 编辑区保存修改 |
@@ -327,10 +446,34 @@
       "description": "修改了 设定集/主角卡.md",
       "timestamp": "2026-04-16T13:15:00Z",
       "meta": { "file": "设定集/主角卡.md" }
+    },
+    {
+      "id": "act_3",
+      "type": "chapter_created",
+      "description": "创建了第5章",
+      "timestamp": "2026-04-16T11:00:00Z",
+      "meta": { "chapter": 5, "file": "正文/第5章.md" }
+    },
+    {
+      "id": "act_4",
+      "type": "task_failed",
+      "description": "第2章审查失败",
+      "timestamp": "2026-04-16T10:00:00Z",
+      "meta": { "task_type": "review_chapter", "chapter": 2, "error": "超时" }
     }
   ]
 }
 ```
+
+**activity type 枚举**：
+| type | description | meta 包含字段 |
+|------|-------------|--------------|
+| `task_completed` | 任务执行成功 | `task_type`, `chapter`（可选） |
+| `task_failed` | 任务执行失败 | `task_type`, `chapter`（可选）, `error` |
+| `file_modified` | 文件被修改 | `file`（文件路径） |
+| `chapter_created` | 新章节创建 | `chapter`, `file` |
+| `outline_created` | 大纲文件创建 | `file` |
+| `setting_created` | 设定文件创建 | `file`, `entity_type`（可选） |
 
 **后端实现**：聚合 `TaskService._tasks` 中的已完成任务 + SSE 中的文件变更事件。内存缓存最近 N 条（如 50 条），重启后清空。
 
@@ -480,7 +623,67 @@ AI 助手
 - AI 助手聊天框输入 → 路径 B（先 POST /api/chat，确认后 POST /api/tasks）
 - 总览页"写第N章"按钮 → 路径 A + 页面跳转（跳到章节页后自动创建任务）
 
-当前 `claude_runner.run_action()` 只执行 preflight + extract-context，未真正调用 `/webnovel-write` 等 CLI 命令。全量对接需要：
+### AI 助手动作卡与任务系统合同
+
+#### 动作卡（suggested_action）完整字段
+
+动作卡是 AI 助手解析用户意图后返回的结构化动作提案，由用户在 AI 助手中确认执行：
+
+```typescript
+suggested_action = {
+  type: string,           // write_chapter | review_chapter | plan_outline | inspect_setting | ...
+  label: string,          // 动作名称，如"生成第3章"
+  description: string,     // 动作说明，如"根据大纲生成第3章内容"
+  scope: {                // 作用范围
+    page: string,          // 所在页面，如"chapter" | "outline" | "setting"
+    path?: string,         // 作用文件路径（如适用）
+  },
+  expected_result: string, // 预计结果说明
+  confirm_label: string,   // 确认按钮文字，如"执行"
+  cancel_label: string,    // 取消按钮文字，如"先不执行"
+}
+```
+
+#### 任务状态机
+
+```
+pending（待确认）→ running（执行中）→ completed（已完成）
+                              ↓
+                         failed（失败）
+                              ↓
+                       cancelled（已取消）
+```
+
+- `pending`：动作卡已展示，等待用户确认
+- `running`：任务执行中
+- `completed`：任务成功完成
+- `failed`：任务执行失败（如无真实执行器、权限错误等）
+- `cancelled`：用户主动取消（仅在 pending/running 时可取消）
+
+#### 取消接口
+
+**`POST /api/tasks/{id}/cancel`**
+
+- 请求体：无
+- 响应：`{ success: true, task: { id, status: "cancelled" } }`
+- 限制：已处于 `completed`、`failed`、`cancelled` 状态的任务不可取消
+
+#### 双层日志
+
+任务日志分两层：
+
+| 层级 | 字段 | 用途 |
+|------|------|------|
+| 友好日志 | `logs[]` | 显示给用户的进度信息（如"正在读取文件..."、"开始生成第3章..."） |
+| 原始日志 | `raw_logs[]` | 技术细节，供调试用（如具体的 CLI 命令、API 响应、文件路径） |
+
+#### 真实执行或诚实失败原则
+
+- 所有动作必须**真实执行**（接入真实执行器）
+- 没有真实执行器时，任务应返回 `failed` 状态 + 明确错误信息
+- **不再允许**"preflight + extract-context = 已完成"的旧口径
+
+#### 全量对接需要
 
 1. **桥接 Claude Code CLI**：`claude_runner` 需能调用 `claude` CLI 的 slash command（如 `claude /webnovel-write --chapter 3`），或直接调用对应 skill 的 Python 实现
 2. **流式输出**：当前任务只返回最终结果。AI 写作需要流式输出（逐字生成），需改造 TaskService 支持流式日志推送
