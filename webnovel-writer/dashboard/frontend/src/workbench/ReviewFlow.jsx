@@ -5,14 +5,20 @@ import { startSkill } from '../api'
 
 export default function ReviewFlow({ projectRoot, chapterStart, chapterEnd, onCompleted, onCancelled }) {
   const [skillId, setSkillId] = useState(null)
+  const [error, setError] = useState(null)
 
   const handleStart = async () => {
-    const result = await startSkill('review', {
-      project_root: projectRoot,
-      chapter_start: chapterStart,
-      chapter_end: chapterEnd,
-    })
-    setSkillId(result.id)
+    setError(null)
+    try {
+      const result = await startSkill('review', {
+        project_root: projectRoot,
+        chapter_start: chapterStart,
+        chapter_end: chapterEnd,
+      })
+      setSkillId(result.id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '启动审查失败')
+    }
   }
 
   if (!skillId) {
@@ -23,6 +29,7 @@ export default function ReviewFlow({ projectRoot, chapterStart, chapterEnd, onCo
         <button className="btn-primary" onClick={handleStart}>
           开始审查
         </button>
+        {error && <p className="error-message">{error}</p>}
       </div>
     )
   }
@@ -37,6 +44,15 @@ export default function ReviewFlow({ projectRoot, chapterStart, chapterEnd, onCo
   )
 }
 
+function AutoStepDisplay({ stepState }) {
+  const data = stepState.output_data || {}
+  return (
+    <div className="auto-step-display">
+      <p>{data.instruction || '处理中...'}</p>
+    </div>
+  )
+}
+
 const REVIEW_STEP_RENDERERS = {
   step_1: AutoStepDisplay,
   step_2: AutoStepDisplay,
@@ -46,15 +62,6 @@ const REVIEW_STEP_RENDERERS = {
   step_6: AutoStepDisplay,
   step_7: CriticalIssuesDecision,
   step_8: AutoStepDisplay,
-}
-
-function AutoStepDisplay({ stepState }) {
-  const data = stepState.output_data || {}
-  return (
-    <div className="auto-step-display">
-      <p>{data.instruction || '处理中...'}</p>
-    </div>
-  )
 }
 
 export function ReviewProgressDisplay({ stepState }) {
