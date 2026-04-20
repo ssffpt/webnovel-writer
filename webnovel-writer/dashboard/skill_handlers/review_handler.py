@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import datetime
 from pathlib import Path
 
 from dashboard.skill_models import StepDefinition, StepState
@@ -48,6 +49,10 @@ class ReviewSkillHandler(SkillHandler):
             return await self._save_metrics(context)
         if step.step_id == "step_6":
             return await self._writeback_state(context)
+        if step.step_id == "step_7":
+            return await self._handle_critical_issues(context)
+        if step.step_id == "step_8":
+            return await self._finalize(context)
         return {}
 
     async def validate_input(self, step: StepState, data: dict) -> str | None:
@@ -58,7 +63,12 @@ class ReviewSkillHandler(SkillHandler):
         if step.step_id == "step_7":
             decisions = data.get("decisions", [])
             if not decisions:
-                return "请对关键问题做出决策"
+                return "请对每个关键问题做出决策"
+            valid_options = {"auto_fix", "ignore", "manual"}
+            for d in decisions:
+                if d.get("option_id") not in valid_options:
+                    return f"无效的修复方案：{d.get('option_id')}"
+            self._critical_decisions = decisions
             return None
         return None
 
@@ -418,4 +428,108 @@ class ReviewSkillHandler(SkillHandler):
             "state_updated": True,
             "chapters_updated": result.get("chapters_updated", []),
             "instruction": "审查记录已写回 state.json",
+        }
+
+    # ------------------------------------------------------------------
+    # Step 7: Handle critical issues
+    # ------------------------------------------------------------------
+
+    async def _handle_critical_issues(self, context: dict) -> dict:
+        """处理 critical 问题。"""
+        summary = context.get("review_summary", {})
+        critical_issues = summary.get("critical_issues", [])
+
+        if not critical_issues:
+            return {
+                "has_critical": False,
+                "auto_resolved": True,
+                "instruction": "无关键问题，自动通过",
+            }
+
+        issues_with_options = []
+        for issue in critical_issues:
+            options = self._generate_fix_options(issue)
+            issues_with_options.append({
+                "issue": issue,
+                "options": options,
+            })
+
+        context["critical_issues_with_options"] = issues_with_options
+
+        return {
+            "has_critical": True,
+            "auto_resolved": False,
+            "requires_input": True,
+            "issues_with_options": issues_with_options,
+            "instruction": f"发现 {len(critical_issues)} 个关键问题，请选择修复方案",
+        }
+
+    def _generate_fix_options(self, issue: dict) -> list[dict]:
+        return [
+            {
+                "id": "auto_fix",
+                "label": "AI 自动修复",
+                "description": f"自动修改相关段落以解决：{issue.get('message', '')}",
+            },
+            {
+                "id": "ignore",
+                "label": "标记为可接受",
+                "description": "确认此问题不影响阅读体验，标记为已知",
+            },
+            {
+                "id": "manual",
+                "label": "稍后手动修复",
+                "description": "记录到待办列表，稍后手动处理",
+            },
+        ]
+
+    # ------------------------------------------------------------------
+    # Step 8: Finalize
+    # ------------------------------------------------------------------
+
+    async def _finalize(self, context: dict) -> dict:
+        """收尾：保存审查报告文件 + 处理用户决策。"""
+        project_root = Path(context.get("project_root", "."))
+        report = context.get("review_report", {})
+        chapter_start = context.get("chapter_start", 1)
+        chapter_end = context.get("chapter_end", chapter_start)
+
+        # 1. 保存审查报告到文件
+        report_dir = project_root / ".webnovel" / "审查报告"
+        report_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_filename = f"review_{chapter_start}-{chapter_end}_{timestamp}.json"
+        report_path = report_dir / report_filename
+        report_path.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        # 2. 处理 critical 问题决策
+        decisions = getattr(self, '_critical_decisions', [])
+        manual_todos = []
+        for d in decisions:
+            if d.get("option_id") == "manual":
+                manual_todos.append(d.get("issue", {}))
+
+        # 3. 如果有"稍后手动修复"的问题，写入待办
+        if manual_todos:
+            todo_path = project_root / ".webnovel" / "review_todos.json"
+            existing_todos = []
+            if todo_path.exists():
+                try:
+                    existing_todos = json.loads(todo_path.read_text(encoding="utf-8"))
+                except json.JSONDecodeError:
+                    pass
+            existing_todos.extend(manual_todos)
+            todo_path.write_text(
+                json.dumps(existing_todos, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+
+        return {
+            "report_saved": str(report_path),
+            "manual_todos": len(manual_todos),
+            "instruction": f"审查完成，报告已保存至 {report_filename}",
         }

@@ -240,10 +240,31 @@ def test_validate_input_step7_requires_decisions():
     step = StepState(step_id="step_7", status="waiting_input")
 
     result = asyncio.run(handler.validate_input(step, {"decisions": []}))
-    assert result == "请对关键问题做出决策"
+    assert result == "请对每个关键问题做出决策"
 
-    result_ok = asyncio.run(handler.validate_input(step, {"decisions": [{"id": 1}]}))
+    result_ok = asyncio.run(handler.validate_input(step, {"decisions": [{"option_id": "auto_fix", "issue": {}}]}))
     assert result_ok is None
+
+
+def test_validate_input_step7_invalid_option_id():
+    """Step 7 validate_input returns error for invalid option_id."""
+    handler = _handler()()
+    step = StepState(step_id="step_7", status="waiting_input")
+
+    result = asyncio.run(handler.validate_input(step, {"decisions": [{"option_id": "invalid_option", "issue": {}}]}))
+    assert result == "无效的修复方案：invalid_option"
+
+
+def test_validate_input_step7_stores_decisions():
+    """Step 7 validate_input stores decisions in handler instance."""
+    handler = _handler()()
+    step = StepState(step_id="step_7", status="waiting_input")
+
+    decisions = [{"option_id": "auto_fix", "issue": {"message": "test"}}, {"option_id": "ignore", "issue": {}}]
+    asyncio.run(handler.validate_input(step, {"decisions": decisions}))
+
+    assert hasattr(handler, '_critical_decisions')
+    assert handler._critical_decisions == decisions
 
 
 # ---------------------------------------------------------------------------
@@ -406,3 +427,117 @@ def test_review_handler_step3_empty_chapters():
     assert result["all_chapter_results"] == {}
     assert result["summary"]["avg_score"] == 0
     assert result["summary"]["total_issues"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Step 7: Handle critical issues
+# ---------------------------------------------------------------------------
+
+def test_review_handler_step7_no_critical_auto_resolved():
+    """Step 7 with no critical issues → auto_resolved=True."""
+    handler = _handler()()
+    context = {
+        "review_summary": {"critical_issues": []},
+    }
+
+    step = StepState(step_id="step_7", status="running")
+    result = asyncio.run(handler.execute_step(step, context))
+
+    assert result["has_critical"] is False
+    assert result["auto_resolved"] is True
+    assert "无关键问题" in result["instruction"]
+
+
+def test_review_handler_step7_with_critical_requires_input():
+    """Step 7 with critical issues → requires_input=True, returns options."""
+    handler = _handler()()
+    critical_issues = [
+        {"severity": "critical", "message": "矛盾一", "chapter": 1},
+        {"severity": "critical", "message": "矛盾二", "chapter": 2},
+    ]
+    context = {
+        "review_summary": {"critical_issues": critical_issues},
+    }
+
+    step = StepState(step_id="step_7", status="running")
+    result = asyncio.run(handler.execute_step(step, context))
+
+    assert result["has_critical"] is True
+    assert result["auto_resolved"] is False
+    assert result["requires_input"] is True
+    assert len(result["issues_with_options"]) == 2
+    assert "发现 2 个关键问题" in result["instruction"]
+
+
+def test_review_handler_step7_generate_fix_options():
+    """Step 7 _generate_fix_options returns 3 options for each issue."""
+    handler = _handler()()
+    issue = {"severity": "critical", "message": "测试问题"}
+    options = handler._generate_fix_options(issue)
+
+    assert len(options) == 3
+    ids = {o["id"] for o in options}
+    assert ids == {"auto_fix", "ignore", "manual"}
+    assert any(o["label"] == "AI 自动修复" for o in options)
+    assert any(o["id"] == "auto_fix" for o in options)
+
+
+# ---------------------------------------------------------------------------
+# Step 8: Finalize
+# ---------------------------------------------------------------------------
+
+def test_review_handler_step8_saves_report_file():
+    """Step 8 saves review report to .webnovel/审查报告/ directory."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        handler = _handler()()
+        context = {
+            "project_root": tmpdir,
+            "chapter_start": 1,
+            "chapter_end": 3,
+            "review_report": {"overall": {"avg_score": 8.5}},
+        }
+
+        step = StepState(step_id="step_8", status="running")
+        result = asyncio.run(handler.execute_step(step, context))
+
+        assert "report_saved" in result
+        report_path = Path(result["report_saved"])
+        assert report_path.exists()
+        assert report_path.parent.name == "审查报告"
+        report_data = json.loads(report_path.read_text(encoding="utf-8"))
+        assert report_data["overall"]["avg_score"] == 8.5
+
+
+def test_review_handler_step8_manual_todos_written():
+    """Step 8 with manual decisions writes review_todos.json."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        webnovel_dir = Path(tmpdir) / ".webnovel"
+        webnovel_dir.mkdir(parents=True, exist_ok=True)
+
+        handler = _handler()()
+        # Pre-set _critical_decisions via validate_input
+        decisions = [
+            {"option_id": "auto_fix", "issue": {"message": "问题1"}},
+            {"option_id": "manual", "issue": {"message": "问题2"}},
+        ]
+        asyncio.run(handler.validate_input(
+            StepState(step_id="step_7", status="waiting_input"),
+            {"decisions": decisions}
+        ))
+
+        context = {
+            "project_root": tmpdir,
+            "chapter_start": 1,
+            "chapter_end": 1,
+            "review_report": {},
+        }
+
+        step = StepState(step_id="step_8", status="running")
+        result = asyncio.run(handler.execute_step(step, context))
+
+        assert result["manual_todos"] == 1
+        todo_path = webnovel_dir / "review_todos.json"
+        assert todo_path.exists()
+        todos = json.loads(todo_path.read_text(encoding="utf-8"))
+        assert len(todos) == 1
+        assert todos[0]["message"] == "问题2"
