@@ -5,6 +5,7 @@ from dashboard.skill_handlers import (
     EchoSkillHandler,
     InitSkillHandler,
     PlanSkillHandler,
+    ReviewSkillHandler,
     WriteSkillHandler,
 )
 from dashboard.skill_runner import SkillHandler
@@ -46,3 +47,4 @@ default_registry.register("echo", EchoSkillHandler)
 default_registry.register("init", InitSkillHandler)
 default_registry.register("plan", PlanSkillHandler)
 default_registry.register("write", WriteSkillHandler)
+default_registry.register("review", ReviewSkillHandler)
