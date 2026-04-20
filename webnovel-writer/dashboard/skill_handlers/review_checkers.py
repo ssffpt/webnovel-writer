@@ -73,6 +73,7 @@ class HookDensityChecker(BaseChecker):
 class SettingConsistencyChecker(BaseChecker):
     """2. 设定一致性检查。"""
     dimension = "设定一致性"
+    STUB = True  # TODO: implement actual checking logic
 
     async def check(self) -> dict:
         issues = []
@@ -130,6 +131,7 @@ class RhythmRatioChecker(BaseChecker):
 class CharacterOOCChecker(BaseChecker):
     """4. 人物 OOC 检查。"""
     dimension = "人物OOC"
+    STUB = True  # TODO: implement actual checking logic
 
     async def check(self) -> dict:
         return {
