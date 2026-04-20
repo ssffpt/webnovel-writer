@@ -28,6 +28,7 @@ from .watcher import FileWatcher
 from .skill_registry import default_registry
 from .skill_models import SkillInstance, StepState
 from .skill_runner import SkillRunner
+from .rag_config import RAGConfig
 
 # ---------------------------------------------------------------------------
 # 全局状态
@@ -41,6 +42,7 @@ _recent_activities: list[dict] = []
 # Skill API 全局状态
 _active_skills: dict[str, SkillRunner] = {}
 _skill_subscribers: list[asyncio.Queue] = []
+_rag_subscribers: list[asyncio.Queue] = []
 
 STATIC_DIR = Path(__file__).parent / "frontend" / "dist"
 
@@ -96,6 +98,15 @@ def _emit_skill_event(message: str) -> None:
             q.put_nowait(message)
         except asyncio.QueueFull:
             _skill_subscribers.remove(q)
+
+
+def _emit_rag_event(message: str) -> None:
+    """Dispatch a raw JSON message string to all RAG subscribers."""
+    for q in _rag_subscribers[:]:
+        try:
+            q.put_nowait(message)
+        except asyncio.QueueFull:
+            _rag_subscribers.remove(q)
 
 
 async def push_skill_log(skill_id: str, message: str) -> None:
@@ -271,6 +282,27 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
         root = Path(project_root) if project_root else _get_project_root()
         service = QueryService(str(root))
         return service.query_foreshadowing()
+
+    @app.get("/api/query/golden-finger")
+    def api_query_golden_finger(project_root: Optional[str] = None):
+        """金手指状态查询。"""
+        root = Path(project_root) if project_root else _get_project_root()
+        service = QueryService(str(root))
+        return service.query_golden_finger()
+
+    @app.get("/api/query/rhythm")
+    def api_query_rhythm(project_root: Optional[str] = None, volume_number: Optional[int] = None):
+        """节奏分析查询。"""
+        root = Path(project_root) if project_root else _get_project_root()
+        service = QueryService(str(root))
+        return service.query_rhythm(volume_number=volume_number)
+
+    @app.get("/api/query/debt")
+    def api_query_debt(project_root: Optional[str] = None):
+        """债务查询。"""
+        root = Path(project_root) if project_root else _get_project_root()
+        service = QueryService(str(root))
+        return service.query_debt()
 
     @app.get("/api/workbench/summary")
     def workbench_summary():
@@ -718,15 +750,58 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
         return await list_active_skills()
 
     # ===========================================================
-    # SSE：实时变更推送
+    # API: RAG 配置
+    # ===========================================================
+
+    @app.get("/api/rag/config")
+    def get_rag_config():
+        config = RAGConfig(str(_get_project_root()))
+        return {
+            "enabled": config.is_rag_enabled(),
+            "embedding_model": config.get_embedding_model(),
+            "chunk_size": config.get_chunk_size(),
+            "chunk_overlap": config.get_chunk_overlap(),
+            "has_api_key": config.get_openai_key() is not None,
+        }
+
+    @app.post("/api/rag/config")
+    def update_rag_config(payload: dict):
+        config = RAGConfig(str(_get_project_root()))
+        for key, value in payload.items():
+            config.set(key, str(value))
+        return {"success": True}
+
+    # --- RAG 索引构建 API (Task 603) ---
+
+    @app.post("/api/rag/build")
+    async def start_rag_build():
+        """启动索引构建。"""
+        config = RAGConfig(str(_get_project_root()))
+
+        def sse_callback(event_data: dict):
+            _emit_rag_event(json.dumps(event_data, ensure_ascii=False))
+
+        return await config.start_build_index(sse_callback=sse_callback)
+
+    @app.get("/api/rag/build/status")
+    async def get_rag_build_status(task_id: str = None):
+        """查询构建状态。"""
+        config = RAGConfig(str(_get_project_root()))
+        return config.get_build_status(task_id)
+
+    # ===========================================================
+    # SSE: 实时变更推送
     # ===========================================================
 
     @app.get("/api/events")
     async def sse():
-        """Server-Sent Events 端点，推送文件变更、任务状态和 Skill 步骤状态。"""
+        """Server-Sent Events 端点，推送文件变更、任务状态、Skill 步骤和 RAG 构建进度。"""
         file_q = _watcher.subscribe()
         task_q = _task_service.subscribe_events()
         skill_q = subscribe_skill_events()
+        # RAG 构建事件队列
+        rag_q: asyncio.Queue = asyncio.Queue(maxsize=128)
+        _rag_subscribers.append(rag_q)
 
         async def _gen():
             try:
@@ -734,8 +809,9 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
                     file_get = asyncio.create_task(file_q.get())
                     task_get = asyncio.create_task(task_q.get())
                     skill_get = asyncio.create_task(skill_q.get())
+                    rag_get = asyncio.create_task(rag_q.get())
                     done, pending = await asyncio.wait(
-                        {file_get, task_get, skill_get},
+                        {file_get, task_get, skill_get, rag_get},
                         return_when=asyncio.FIRST_COMPLETED,
                     )
                     for waiter in pending:
@@ -749,6 +825,10 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
                 _watcher.unsubscribe(file_q)
                 _task_service.unsubscribe_events(task_q)
                 unsubscribe_skill_events(skill_q)
+                try:
+                    _rag_subscribers.remove(rag_q)
+                except ValueError:
+                    pass
 
         return StreamingResponse(_gen(), media_type="text/event-stream")
 
