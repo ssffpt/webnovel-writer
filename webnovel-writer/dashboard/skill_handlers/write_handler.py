@@ -239,15 +239,7 @@ class WriteSkillHandler(SkillHandler):
         return None
 
     async def _polish(self, step: StepState, context: dict) -> dict:
-        """按优先级修复审查问题 + Anti-AI 终检。
-
-        修复优先级：
-        1. critical — 必须修复
-        2. high — 强烈建议修复
-        3. medium/low — 可选修复
-
-        Anti-AI 终检：检测并消除 AI 常见痕迹词汇。
-        """
+        """Anti-AI 终检：检测并消除 AI 常见痕迹词汇。"""
         current_text = context.get("adapted_text") or context.get("draft_text", "")
         issues = context.get("review_issues", [])
 
@@ -255,13 +247,17 @@ class WriteSkillHandler(SkillHandler):
         high_issues = [i for i in issues if i.get("severity") == "high"]
         other_issues = [i for i in issues if i.get("severity") in ("medium", "low")]
 
+        medium_issues = [i for i in issues if i.get("severity") == "medium"]
+        low_issues = [i for i in issues if i.get("severity") == "low"]
+
         # 降级模式：执行 Anti-AI 终检的简单规则替换
         polished_text = self._anti_ai_check(current_text)
 
         fix_report = {
-            "critical_fixed": len(critical_issues),
-            "high_fixed": len(high_issues),
-            "other_fixed": 0,
+            "critical_count": len(critical_issues),
+            "high_count": len(high_issues),
+            "medium_count": len(medium_issues),
+            "low_count": len(low_issues),
             "anti_ai_fixes": self._count_anti_ai_fixes(current_text, polished_text),
         }
 
