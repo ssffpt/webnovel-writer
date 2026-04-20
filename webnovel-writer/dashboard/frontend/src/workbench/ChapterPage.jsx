@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchFileTree, readFile, saveFile } from '../api.js'
+import WriteFlow from './WriteFlow.jsx'
 
 function flattenFiles(nodes = []) {
   const files = []
@@ -39,6 +40,7 @@ export default function ChapterPage({
   const [focusMode, setFocusMode] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [pendingSwitchPath, setPendingSwitchPath] = useState(null)
+  const [editMode, setEditMode] = useState('manual')
 
   // Word count (Chinese: count non-whitespace characters)
   const wordCount = useMemo(() => draft.replace(/\s/g, '').length, [draft])
@@ -298,18 +300,50 @@ export default function ChapterPage({
             </div>
           </div>
 
-          {loadContentError ? <p className="error-text">{loadContentError}</p> : null}
+          <div className="mode-toggle">
+            <button
+              type="button"
+              className={editMode === 'manual' ? 'active' : ''}
+              onClick={() => setEditMode('manual')}
+            >
+              手动编辑
+            </button>
+            <button
+              type="button"
+              className={editMode === 'ai' ? 'active' : ''}
+              onClick={() => setEditMode('ai')}
+            >
+              AI 创作
+            </button>
+          </div>
 
-          <textarea
-            className="chapter-editor-textarea"
-            value={draft}
-            onChange={event => {
-              setDraft(event.target.value)
-              setDirty(true)
-            }}
-            placeholder="在这里编辑章节正文…"
-            disabled={!selectedPath}
-          />
+          {editMode === 'ai' ? (
+            <WriteFlow
+              projectRoot={selectedPath ? selectedPath.split('/chapters/')[0] : ''}
+              chapterNum={selectedPath ? extractChapterNumber(selectedPath) || 1 : 1}
+              onCompleted={(text) => {
+                setEditMode('manual')
+                setDraft(text)
+                setDirty(true)
+              }}
+              onCancelled={() => setEditMode('manual')}
+            />
+          ) : (
+            <>
+              {loadContentError ? <p className="error-text">{loadContentError}</p> : null}
+
+              <textarea
+                className="chapter-editor-textarea"
+                value={draft}
+                onChange={event => {
+                  setDraft(event.target.value)
+                  setDirty(true)
+                }}
+                placeholder="在这里编辑章节正文…"
+                disabled={!selectedPath}
+              />
+            </>
+          )}
 
           <div className="chapter-status-bar">
             <span className="chapter-word-count">{wordCount} 字</span>
