@@ -244,3 +244,165 @@ def test_validate_input_step7_requires_decisions():
 
     result_ok = asyncio.run(handler.validate_input(step, {"decisions": [{"id": 1}]}))
     assert result_ok is None
+
+
+# ---------------------------------------------------------------------------
+# Happy path: Step 3 — 3 chapters → 6 dimensions each → all_chapter_results
+# ---------------------------------------------------------------------------
+
+def test_review_handler_step3_parallel_review_happy_path():
+    """3 chapters, each runs 6 dimension checkers in parallel.
+
+    all_chapter_results has 3 keys (one per chapter), each with 6 dimension results.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        zhengwen_dir = Path(tmpdir) / "正文"
+        zhengwen_dir.mkdir(parents=True, exist_ok=True)
+        (zhengwen_dir / "第1章.md").write_text("第一章正文内容", encoding="utf-8")
+        (zhengwen_dir / "第2章.md").write_text("第二章正文内容", encoding="utf-8")
+        (zhengwen_dir / "第3章.md").write_text("第三章正文内容", encoding="utf-8")
+
+        handler = _handler()()
+        context = {
+            "project_root": tmpdir,
+            "chapter_start": 1,
+            "chapter_end": 3,
+        }
+
+        # Step 1 and 2 must run first to populate context
+        asyncio.run(handler._load_references(context))
+        asyncio.run(handler._load_project_state(context))
+
+        step = StepState(step_id="step_3", status="running")
+
+        result = asyncio.run(handler.execute_step(step, context))
+
+        assert "all_chapter_results" in result
+        assert "summary" in result
+        all_results = result["all_chapter_results"]
+        assert len(all_results) == 3
+        assert set(all_results.keys()) == {1, 2, 3}
+        for ch_num in (1, 2, 3):
+            assert len(all_results[ch_num]) == 6
+            dims = {r["dimension"] for r in all_results[ch_num]}
+            assert "爽点密度" in dims
+            assert "设定一致性" in dims
+            assert "节奏比例" in dims
+            assert "人物OOC" in dims
+            assert "叙事连贯性" in dims
+            assert "追读力" in dims
+
+
+# ---------------------------------------------------------------------------
+# Edge case 1: Single chapter review → only 1 key in all_chapter_results
+# ---------------------------------------------------------------------------
+
+def test_review_handler_step3_single_chapter():
+    """Single chapter review: all_chapter_results has 1 key, progress=1.0."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        zhengwen_dir = Path(tmpdir) / "正文"
+        zhengwen_dir.mkdir(parents=True, exist_ok=True)
+        (zhengwen_dir / "第5章.md").write_text("单章内容", encoding="utf-8")
+
+        handler = _handler()()
+        context = {
+            "project_root": tmpdir,
+            "chapter_start": 5,
+            "chapter_end": 5,
+        }
+
+        asyncio.run(handler._load_references(context))
+        asyncio.run(handler._load_project_state(context))
+
+        step = StepState(step_id="step_3", status="running")
+
+        result = asyncio.run(handler.execute_step(step, context))
+
+        assert len(result["all_chapter_results"]) == 1
+        assert 5 in result["all_chapter_results"]
+        assert step.progress == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Edge case 2: One checker throws exception → its dimension score=0, others OK
+# ---------------------------------------------------------------------------
+
+class FailingChecker:
+    """A checker that always raises an exception."""
+    dimension = "failing_dimension"
+
+    def __init__(self, text, task_brief, contract):
+        self.text = text
+        self.task_brief = task_brief
+        self.contract = contract
+
+    async def check(self):
+        raise RuntimeError("checker error")
+
+
+def test_review_handler_step3_checker_exception_isolation(monkeypatch):
+    """One checker raising an exception leaves others intact; failed gets score=0."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        zhengwen_dir = Path(tmpdir) / "正文"
+        zhengwen_dir.mkdir(parents=True, exist_ok=True)
+        (zhengwen_dir / "第1章.md").write_text("内容", encoding="utf-8")
+
+        handler = _handler()()
+        context = {
+            "project_root": tmpdir,
+            "chapter_start": 1,
+            "chapter_end": 1,
+        }
+
+        asyncio.run(handler._load_references(context))
+        asyncio.run(handler._load_project_state(context))
+
+        # Monkey-patch HookDensityChecker to fail
+        from dashboard.skill_handlers import review_checkers as rc
+        original = rc.HookDensityChecker
+        rc.HookDensityChecker = FailingChecker
+
+        try:
+            step = StepState(step_id="step_3", status="running")
+            result = asyncio.run(handler.execute_step(step, context))
+
+            ch1_results = result["all_chapter_results"][1]
+            # Find the failing dimension
+            failing = next(r for r in ch1_results if r["dimension"] == "failing_dimension")
+            assert failing["score"] == 0
+            assert not failing["passed"]
+            assert any(i["severity"] == "error" for i in failing["issues"])
+
+            # Others should still be present (5 remaining)
+            non_failing = [r for r in ch1_results if r["dimension"] != "failing_dimension"]
+            assert len(non_failing) == 5
+            for r in non_failing:
+                assert r["score"] > 0
+        finally:
+            rc.HookDensityChecker = original
+
+
+# ---------------------------------------------------------------------------
+# Error case: Empty review_chapters → returns empty results, no exception
+# ---------------------------------------------------------------------------
+
+def test_review_handler_step3_empty_chapters():
+    """review_chapters empty → returns empty all_chapter_results, no exception."""
+    handler = _handler()()
+    context = {
+        "project_root": str(REPO_ROOT),
+        "review_chapters": {},
+    }
+    context["references"] = {
+        "core_constraints": "",
+        "creativity_constraints": [],
+        "settings": {},
+    }
+
+    step = StepState(step_id="step_3", status="running")
+
+    result = asyncio.run(handler.execute_step(step, context))
+
+    assert result["all_chapter_results"] == {}
+    assert result["summary"]["avg_score"] == 0
+    assert result["summary"]["total_issues"] == 0

@@ -1,6 +1,7 @@
-"""ReviewSkillHandler — 8-step review skill (steps 1-2 implemented)."""
+"""ReviewSkillHandler — 8-step review skill (steps 1-3 implemented)."""
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -39,7 +40,9 @@ class ReviewSkillHandler(SkillHandler):
             return await self._load_references(context)
         if step.step_id == "step_2":
             return await self._load_project_state(context)
-        # step_3 ~ step_8 in future tasks
+        if step.step_id == "step_3":
+            return await self._run_parallel_review(step, context)
+        # step_4 ~ step_8 in future tasks
         return {}
 
     async def validate_input(self, step: StepState, data: dict) -> str | None:
@@ -163,3 +166,144 @@ class ReviewSkillHandler(SkillHandler):
             "has_outlines": len(chapter_outlines) > 0,
             "instruction": f"已加载 {len(chapters)} 章正文",
         }
+
+    # ------------------------------------------------------------------
+    # Step 3: Parallel review
+    # ------------------------------------------------------------------
+
+    async def _run_parallel_review(self, step: StepState, context: dict) -> dict:
+        """对每章执行六维并行审查。
+
+        多章审查时，逐章执行（每章内部 6 维并行）。
+        通过 step.progress 推送整体进度。
+        """
+        from .review_checkers import (
+            HookDensityChecker,
+            SettingConsistencyChecker,
+            RhythmRatioChecker,
+            CharacterOOCChecker,
+            NarrativeCoherenceChecker,
+            ReadabilityChecker,
+        )
+
+        chapters = context.get("review_chapters", {})
+        references = context.get("references", {})
+        chapter_outlines = context.get("chapter_outlines", {})
+
+        task_brief = {
+            "relevant_settings": "\n".join(references.get("settings", {}).values()),
+            "chapter_outline": "",
+            "previous_summaries": [],
+            "pending_foreshadowing": [],
+            "character_states": {},
+            "core_constraints": references.get("core_constraints", ""),
+            "style_reference": "",
+        }
+
+        contract = {
+            "setting_constraints": self._extract_constraints_from_references(references),
+            "foreshadowing_obligations": [],
+            "timeline_anchor": "",
+            "character_boundaries": {},
+        }
+
+        all_chapter_results = {}
+        chapter_nums = sorted(chapters.keys())
+        total = len(chapter_nums)
+
+        for i, ch_num in enumerate(chapter_nums):
+            text = chapters[ch_num]
+
+            ch_outline = chapter_outlines.get(ch_num, {})
+            task_brief["chapter_outline"] = json.dumps(ch_outline, ensure_ascii=False) if ch_outline else ""
+
+            checkers = [
+                HookDensityChecker(text, task_brief, contract),
+                SettingConsistencyChecker(text, task_brief, contract),
+                RhythmRatioChecker(text, task_brief, contract),
+                CharacterOOCChecker(text, task_brief, contract),
+                NarrativeCoherenceChecker(text, task_brief, contract),
+                ReadabilityChecker(text, task_brief, contract),
+            ]
+
+            results = await asyncio.gather(
+                *[checker.check() for checker in checkers],
+                return_exceptions=True,
+            )
+
+            chapter_results = []
+            for j, result in enumerate(results):
+                if isinstance(result, Exception):
+                    chapter_results.append({
+                        "dimension": checkers[j].dimension,
+                        "score": 0,
+                        "passed": False,
+                        "issues": [{"severity": "error", "message": str(result)}],
+                    })
+                else:
+                    chapter_results.append(result)
+
+            all_chapter_results[ch_num] = chapter_results
+            step.progress = (i + 1) / total
+
+        context["all_chapter_results"] = all_chapter_results
+        summary = self._summarize_review(all_chapter_results)
+        context["review_summary"] = summary
+
+        return {
+            "all_chapter_results": all_chapter_results,
+            "summary": summary,
+            "instruction": f"审查完成：{total} 章，平均分 {summary['avg_score']:.1f}/10",
+        }
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _summarize_review(self, all_results: dict) -> dict:
+        """汇总多章审查结果。"""
+        all_scores = []
+        all_issues = []
+        dimension_scores = {}
+
+        for ch_num, results in all_results.items():
+            for r in results:
+                dim = r["dimension"]
+                all_scores.append(r["score"])
+                dimension_scores.setdefault(dim, []).append(r["score"])
+                for issue in r.get("issues", []):
+                    issue["chapter"] = ch_num
+                    issue["dimension"] = dim
+                    all_issues.append(issue)
+
+        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "error": 0}
+        all_issues.sort(key=lambda x: severity_order.get(x.get("severity", "low"), 4))
+
+        avg_score = sum(all_scores) / len(all_scores) if all_scores else 0
+        dimension_avg = {
+            dim: sum(scores) / len(scores)
+            for dim, scores in dimension_scores.items()
+        }
+
+        return {
+            "avg_score": round(avg_score, 1),
+            "dimension_avg": {k: round(v, 1) for k, v in dimension_avg.items()},
+            "total_issues": len(all_issues),
+            "critical_issues": [i for i in all_issues if i.get("severity") == "critical"],
+            "high_issues": [i for i in all_issues if i.get("severity") == "high"],
+            "all_issues": all_issues,
+        }
+
+    def _extract_constraints_from_references(self, references: dict) -> list[str]:
+        """从参考资料中提取硬约束。"""
+        constraints = []
+        core = references.get("core_constraints", "")
+        for line in core.split("\n"):
+            line = line.strip()
+            if line.startswith("- "):
+                constraints.append(line[2:])
+
+        for c in references.get("creativity_constraints", []):
+            constraints.append(c.get("content", ""))
+
+        return constraints
