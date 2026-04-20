@@ -54,9 +54,11 @@ describe('WriteFlow', () => {
     await user.click(btn)
     await waitFor(() => {
       expect(startSkill).toHaveBeenCalledWith('write', {
-        project_root: '/test/project',
-        chapter_num: 1,
         mode: 'standard',
+        context: {
+          project_root: '/test/project',
+          chapter_num: 1,
+        },
       })
     })
   })
@@ -89,9 +91,11 @@ describe('WriteFlow', () => {
 
     await waitFor(() => {
       expect(startSkill).toHaveBeenCalledWith('write', {
-        project_root: '/test/project',
-        chapter_num: 1,
         mode: 'fast',
+        context: {
+          project_root: '/test/project',
+          chapter_num: 1,
+        },
       })
     })
   })

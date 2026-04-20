@@ -2,7 +2,7 @@
 
 ## 当前进度
 Phase: 6
-Current Task: task-605
+Current Task: code-review-fix
 Status: completed
 
 ## Phase 0: SkillRunner 基础设施
@@ -66,3 +66,12 @@ Status: completed
 - [x] task-603 向量索引构建
 - [x] task-604 Context Agent RAG 模式集成
 - [x] task-605 前端 RAG 配置 + 索引管理 UI
+
+## 代码评审修复
+
+- [x] fix-1 api.js GET 参数重复编码（去掉 encodeURIComponent）
+- [x] fix-2 Skill 启动协议前后端统一（前端参数包进 context）
+- [x] fix-3 SkillFlowPanel 状态模型对齐（合并 steps+step_states、step_id 匹配、启用 stepRenderers）
+- [x] fix-4 WriteFlow 完成回调透传最终状态
+- [x] fix-5 RAG 前后端接口统一（添加 /api/rag/test、统一 API key 读取）
+- [x] fix-6 大纲存储格式与工作台读取对齐

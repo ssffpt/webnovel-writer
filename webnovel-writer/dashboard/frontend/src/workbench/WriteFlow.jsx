@@ -273,9 +273,11 @@ export default function WriteFlow({ projectRoot, chapterNum, onCompleted, onCanc
     setError('')
     try {
       const result = await startSkill('write', {
-        project_root: projectRoot,
-        chapter_num: chapterNum,
         mode: mode,
+        context: {
+          project_root: projectRoot,
+          chapter_num: chapterNum,
+        },
       })
       setSkillId(result.id)
     } catch (err) {
@@ -300,7 +302,11 @@ export default function WriteFlow({ projectRoot, chapterNum, onCompleted, onCanc
       skillId={skillId}
       stepRenderers={WRITE_STEP_RENDERERS}
       onCompleted={(finalState) => {
-        const text = finalState?.final_text || ''
+        // Backend result is { step_id: output_data }; look for step_4 (polish) or step_2a (draft)
+        const stepResults = finalState?.result || {}
+        const text = stepResults.step_4?.polished_text
+          || stepResults.step_2a?.draft_text
+          || ''
         onCompleted(text)
       }}
       onCancelled={onCancelled}

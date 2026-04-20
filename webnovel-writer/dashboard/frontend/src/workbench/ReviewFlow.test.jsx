@@ -56,9 +56,11 @@ describe('ReviewFlow', () => {
     await user.click(btn)
     await waitFor(() => {
       expect(startSkill).toHaveBeenCalledWith('review', {
-        project_root: '/test/project',
-        chapter_start: 1,
-        chapter_end: 1,
+        context: {
+          project_root: '/test/project',
+          chapter_start: 1,
+          chapter_end: 1,
+        },
       })
     })
   })

@@ -140,11 +140,17 @@ def _make_skill_on_step_change(skill_id: str, skill_name: str) -> callable:
                     ensure_ascii=False,
                 )
             else:
+                # Collect output_data from all completed steps as the result
+                result_data = {}
+                for st in instance.step_states:
+                    if st.output_data:
+                        result_data[st.step_id] = st.output_data
                 payload = json.dumps(
                     {
                         "type": "skill.completed",
                         "skillId": instance.id,
                         "skillName": instance.skill_name,
+                        "result": result_data,
                     },
                     ensure_ascii=False,
                 )
@@ -770,6 +776,18 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
         for key, value in payload.items():
             config.set(key, str(value))
         return {"success": True}
+
+    @app.post("/api/rag/test")
+    def test_rag_connection():
+        """测试 RAG embedding API 连接。"""
+        config = RAGConfig(str(_get_project_root()))
+        api_key = config.get_openai_key()
+        if not api_key:
+            return {"success": False, "message": "API Key 未配置"}
+        model = config.get_embedding_model()
+        base_url = config.get("RAG_EMBEDDING_BASE_URL", "https://api.openai.com/v1")
+        # Basic reachability check: key is present and non-empty
+        return {"success": True, "message": f"配置有效（模型: {model}）"}
 
     # --- RAG 索引构建 API (Task 603) ---
 

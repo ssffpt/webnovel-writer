@@ -174,25 +174,37 @@ def _is_child(path: Path, parent: Path) -> bool:
 def build_outline_tree(project_root: Path) -> dict[str, Any]:
     """构建大纲树结构。
 
-    大纲目录为平铺结构（非子目录）：
-    - 大纲/总纲.md
-    - 大纲/爽点规划.md
-    - 大纲/第N卷-详细大纲.md
+    大纲目录支持两种格式：
+    - 平铺 .md 文件：大纲/总纲.md, 大纲/第N卷-详细大纲.md
+    - 子目录结构（plan_handler 生成）：大纲/<卷名>/节拍表.json, 时间线.json, 卷骨架.json, 第X章.json
 
     返回 { files, volumes, total_volumes }。
     """
     outline_dir = project_root / "大纲"
 
-    # 扫描所有 .md 文件
+    # 扫描顶层 .md 文件和子目录
     files: list[dict] = []
+    volume_dirs: list[dict] = []  # subdirectories representing volumes
     if outline_dir.is_dir():
         for f in sorted(outline_dir.iterdir()):
-            if f.is_file() and f.suffix == ".md":
+            if f.is_file() and f.suffix in (".md", ".json"):
                 files.append({
                     "name": f.name,
                     "path": f"大纲/{f.name}",
                     "type": "file",
                 })
+            elif f.is_dir():
+                # Volume subdirectory (e.g. 大纲/第一卷/)
+                children = _scan_outline_subdir(f, project_root)
+                volume_dirs.append({
+                    "name": f.name,
+                    "path": f"大纲/{f.name}",
+                    "type": "dir",
+                    "children": children,
+                })
+
+    # Also include volume subdirectories as top-level file entries
+    files.extend(volume_dirs)
 
     # 从 state.json 读取 target_chapters
     target_chapters = 600  # 默认
@@ -206,11 +218,20 @@ def build_outline_tree(project_root: Path) -> dict[str, Any]:
         except (json.JSONDecodeError, OSError):
             pass
 
+    # Also check state.json for volume info written by plan_handler
+    state_volumes = {}
+    if state_path.is_file():
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            state_volumes = state.get("volumes", {})
+        except (json.JSONDecodeError, OSError):
+            pass
+
     # 每卷 50 章
     chapters_per_volume = 50
     total_volumes = (target_chapters - 1) // chapters_per_volume + 1 if target_chapters > 0 else 1
 
-    # 检测每卷是否有详细大纲
+    # 检测每卷是否有详细大纲（.md 文件或子目录）
     volume_pattern = re.compile(r"第(\d+)卷")
     existing_volumes: set[int] = set()
     for f in files:
@@ -218,12 +239,36 @@ def build_outline_tree(project_root: Path) -> dict[str, Any]:
         if m:
             existing_volumes.add(int(m.group(1)))
 
+    # Also detect volumes from subdirectories
+    dir_volume_names: set[str] = set()
+    for d in volume_dirs:
+        dir_volume_names.add(d["name"])
+
     volumes: list[dict] = []
     for v in range(1, total_volumes + 1):
         start = (v - 1) * chapters_per_volume + 1
         end = min(v * chapters_per_volume, target_chapters)
         has_outline = v in existing_volumes
-        outline_path = f"大纲/第{v}卷-详细大纲.md" if has_outline else None
+
+        # Check for volume subdirectory or state.json entry
+        outline_path = None
+        if has_outline:
+            outline_path = f"大纲/第{v}卷-详细大纲.md"
+        else:
+            # Look for a matching subdirectory (e.g. "第一卷")
+            for d_name in dir_volume_names:
+                if f"第{v}卷" in d_name:
+                    has_outline = True
+                    outline_path = f"大纲/{d_name}"
+                    break
+            # Also check state.json volumes
+            if not has_outline:
+                for vol_name, vol_info in state_volumes.items():
+                    if f"第{v}卷" in vol_name and vol_info.get("status") == "planned":
+                        has_outline = True
+                        outline_path = f"大纲/{vol_name}"
+                        break
+
         volumes.append({
             "number": v,
             "has_outline": has_outline,
@@ -236,3 +281,18 @@ def build_outline_tree(project_root: Path) -> dict[str, Any]:
         "volumes": volumes,
         "total_volumes": total_volumes,
     }
+
+
+def _scan_outline_subdir(volume_dir: Path, project_root: Path) -> list[dict]:
+    """Scan a volume subdirectory for .json and .md files."""
+    children = []
+    for f in sorted(volume_dir.iterdir()):
+        if f.is_file() and f.suffix in (".md", ".json"):
+            rel = f"大纲/{volume_dir.name}/{f.name}"
+            children.append({
+                "name": f.name,
+                "path": rel,
+                "type": "file",
+                "size": f.stat().st_size,
+            })
+    return children

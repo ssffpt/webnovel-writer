@@ -38,7 +38,12 @@ class RAGConfig:
         return default
 
     def get_openai_key(self) -> Optional[str]:
-        return self.get("OPENAI_API_KEY")
+        """Get the API key for embedding calls.
+
+        Checks both RAG_EMBEDDING_API_KEY (set by the frontend RAG config UI)
+        and OPENAI_API_KEY (conventional fallback) in .env and rag_config.json.
+        """
+        return self.get("RAG_EMBEDDING_API_KEY") or self.get("OPENAI_API_KEY")
 
     def get_embedding_model(self) -> str:
         return self.get("RAG_EMBEDDING_MODEL", "text-embedding-3-small")

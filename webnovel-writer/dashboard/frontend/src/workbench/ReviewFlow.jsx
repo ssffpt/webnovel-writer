@@ -11,9 +11,11 @@ export default function ReviewFlow({ projectRoot, chapterStart, chapterEnd, onCo
     setError(null)
     try {
       const result = await startSkill('review', {
-        project_root: projectRoot,
-        chapter_start: chapterStart,
-        chapter_end: chapterEnd,
+        context: {
+          project_root: projectRoot,
+          chapter_start: chapterStart,
+          chapter_end: chapterEnd,
+        },
       })
       setSkillId(result.id)
     } catch (err) {
