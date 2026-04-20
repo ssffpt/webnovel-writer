@@ -1,8 +1,8 @@
 # TASK_STATE
 
 ## 当前进度
-Phase: 1
-Current Task: task-101
+Phase: 6
+Current Task: task-605
 Status: completed
 
 ## Phase 0: SkillRunner 基础设施
@@ -35,34 +35,34 @@ Status: completed
 ## Phase 3: Write 实现（章节创作）
 
 - [x] task-301 ScriptAdapter 实现
-- [ ] task-302 WriteSkillHandler 骨架 + 模式选择
-- [ ] task-303 Step 1 Context Agent（含 RAG 降级）
+- [x] task-302 WriteSkillHandler 骨架 + 模式选择
+- [x] task-303 Step 1 Context Agent（含 RAG 降级）
 - [x] task-304 Step 2A 正文起草 + Step 2B 风格适配
 - [x] task-305 Step 3 六维审查（并行检查器）
-- [ ] task-306 Step 4 润色 + Anti-AI 终检
-- [ ] task-307 Step 5 Data Agent + Step 6 Git 备份
-- [ ] task-308 WriteFlow 前端组件 + ChapterPage 集成
+- [x] task-306 Step 4 润色 + Anti-AI 终检
+- [x] task-307 Step 5 Data Agent + Step 6 Git 备份
+- [x] task-308 WriteFlow 前端组件 + ChapterPage 集成
 
 ## Phase 4: Review 实现
 
-- [ ] task-401 ReviewSkillHandler 骨架 + Step 1-2
-- [ ] task-402 Step 3 并行审查
-- [ ] task-403 Step 4 审查报告 + Step 5-6 落库
-- [ ] task-404 Step 7 critical 问题决策 + Step 8 收尾
-- [ ] task-405 ReviewFlow 前端组件 + 六维雷达图
+- [x] task-401 ReviewSkillHandler 骨架 + Step 1-2
+- [x] task-402 Step 3 并行审查
+- [x] task-403 Step 4 审查报告 + Step 5-6 落库
+- [x] task-404 Step 7 critical 问题决策 + Step 8 收尾
+- [x] task-405 ReviewFlow 前端组件 + 六维雷达图
 
 ## Phase 5: Query 扩展
 
-- [ ] task-501 伏笔查询 API
-- [ ] task-502 节奏分析 API
-- [ ] task-503 金手指状态 + 债务查询 API
-- [ ] task-504 SettingPage 标签页扩展
-- [ ] task-505 OverviewPage 创作仪表盘
+- [x] task-501 伏笔查询 API
+- [x] task-502 节奏分析 API
+- [x] task-503 金手指状态 + 债务查询 API
+- [x] task-504 SettingPage 标签页扩展
+- [x] task-505 OverviewPage 创作仪表盘
 
 ## Phase 6: RAG 集成
 
-- [ ] task-601 RAG 配置 API + .env 管理
-- [ ] task-602 ScriptAdapter 封装 rag_adapter.py
-- [ ] task-603 向量索引构建
-- [ ] task-604 Context Agent RAG 模式集成
-- [ ] task-605 前端 RAG 配置 + 索引管理 UI
+- [x] task-601 RAG 配置 API + .env 管理
+- [x] task-602 ScriptAdapter 封装 rag_adapter.py
+- [x] task-603 向量索引构建
+- [x] task-604 Context Agent RAG 模式集成
+- [x] task-605 前端 RAG 配置 + 索引管理 UI
