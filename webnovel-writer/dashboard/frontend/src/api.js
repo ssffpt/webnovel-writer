@@ -98,3 +98,49 @@ export function fetchOutlineTree() {
 export function fetchRecentActivity() {
     return fetchJSON('/api/recent-activity');
 }
+
+// --- Skill API（Phase 0）---
+export function startSkill(skillName, options = {}) {
+    return postJSON(`/api/skill/${skillName}/start`, options);
+}
+
+export function getSkillStatus(skillId) {
+    return fetchJSON(`/api/skill/${skillId}/status`);
+}
+
+export function submitSkillStep(skillId, stepId, data) {
+    return postJSON(`/api/skill/${skillId}/step`, { step_id: stepId, data });
+}
+
+export function cancelSkill(skillId) {
+    return postJSON(`/api/skill/${skillId}/cancel`);
+}
+
+// --- Query API（Phase 5）---
+export function fetchForeshadowing() {
+  return fetchJSON('/api/query/foreshadowing');
+}
+
+// --- RAG API（Phase 6）---
+export function getRAGConfig() {
+  return fetchJSON('/api/rag/config');
+}
+
+export function saveRAGConfig(config) {
+  return postJSON('/api/rag/config', config);
+}
+
+export function testRAGConnection() {
+  return postJSON('/api/rag/test', {});
+}
+
+export function startRAGBuild() {
+  return postJSON('/api/rag/build', {});
+}
+
+export function getRAGBuildStatus(taskId) {
+  const path = taskId
+    ? `/api/rag/build/status?task_id=${encodeURIComponent(taskId)}`
+    : '/api/rag/build/status';
+  return fetchJSON(path);
+}
