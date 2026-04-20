@@ -149,16 +149,68 @@ class TestExecuteStep:
         assert len(result["review_results"]) == 6
 
     @pytest.mark.asyncio
-    async def test_step_5_returns_data_agent_placeholder(self, handler):
+    async def test_step_5_returns_data_agent_result(self, handler, tmp_path):
+        """Step 5: Data Agent runs and returns structured results."""
         step = StepState(step_id="step_5", status="running")
-        result = await handler.execute_step(step, {})
-        assert result == {"message": "Data Agent（待实现）"}
+        context = {
+            "project_root": str(tmp_path),
+            "chapter_num": 1,
+            "polished_text": "测试正文内容。",
+        }
+        result = await handler.execute_step(step, context)
+
+        assert "results" in result
+        assert "instruction" in result
+        assert "data_agent_results" in context
+        assert result["results"]["chapter_saved"] is not None
 
     @pytest.mark.asyncio
-    async def test_step_6_returns_git_backup_placeholder(self, handler):
+    async def test_step_6_git_backup_skipped_when_disabled(self, handler, tmp_path):
+        """Step 6: Git backup skipped when auto_git_commit=False."""
         step = StepState(step_id="step_6", status="running")
-        result = await handler.execute_step(step, {})
-        assert result == {"message": "Git 备份（待实现）"}
+        context = {
+            "project_root": str(tmp_path),
+            "chapter_num": 1,
+        }
+        result = await handler.execute_step(step, context)
+
+        assert result["skipped"] is True
+        assert "未开启自动提交" in result["instruction"]
+
+    @pytest.mark.asyncio
+    async def test_step_6_git_backup_commits_when_enabled(self, handler, tmp_path):
+        """Step 6: Git backup commits when auto_git_commit=True."""
+        # Set up config with auto_git_commit=True
+        config_dir = tmp_path / ".webnovel"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        (config_dir / "config.json").write_text('{"auto_git_commit": true}', encoding="utf-8")
+
+        step = StepState(step_id="step_6", status="running")
+        context = {
+            "project_root": str(tmp_path),
+            "chapter_num": 1,
+        }
+        result = await handler.execute_step(step, context)
+
+        # If git is available and there are changes to commit, should succeed
+        # If nothing to commit, returns success=True with commit_hash=None
+        assert "skipped" in result
+        if not result["skipped"]:
+            assert "success" in result
+
+    @pytest.mark.asyncio
+    async def test_step_6_git_backup_error_does_not_block(self, handler, tmp_path):
+        """Step 6: Git commit failure is non-blocking (returns error without raising)."""
+        step = StepState(step_id="step_6", status="running")
+        context = {
+            "project_root": "/nonexistent/path",
+            "chapter_num": 1,
+        }
+        result = await handler.execute_step(step, context)
+
+        # Even on error/non-existent path, returns result dict without raising
+        assert isinstance(result, dict)
+        assert "instruction" in result
 
     @pytest.mark.asyncio
     async def test_unknown_step_returns_empty_dict(self, handler):

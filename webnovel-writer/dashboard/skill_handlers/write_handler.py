@@ -2,7 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
+from pathlib import Path
+
+from ..script_adapter import ScriptAdapter
 from ..skill_runner import SkillHandler
 from ..skill_models import StepDefinition, StepState
 
@@ -50,9 +54,11 @@ class WriteSkillHandler(SkillHandler):
         if step.step_id == "step_4":
             return await self._polish(step, context)
         if step.step_id == "step_5":
-            return {"message": "Data Agent（待实现）"}
+            from .data_agent import DataAgent
+            agent = DataAgent(context)
+            return await agent.run()
         if step.step_id == "step_6":
-            return {"message": "Git 备份（待实现）"}
+            return await self._git_backup(context)
         return {}
 
     async def _draft_chapter(self, context: dict) -> dict:
@@ -311,3 +317,43 @@ class WriteSkillHandler(SkillHandler):
             if original[i] != polished[i]:
                 diff_chars += 1
         return max(1, diff_chars // 10)
+
+    async def _git_backup(self, context: dict) -> dict:
+        """Git 自动提交（可选）。"""
+        project_root = Path(context.get("project_root", "."))
+        chapter_num = context.get("chapter_num", 1)
+
+        config_path = project_root / ".webnovel" / "config.json"
+        auto_commit = False
+        if config_path.exists():
+            try:
+                config = json.loads(config_path.read_text(encoding="utf-8"))
+                auto_commit = config.get("auto_git_commit", False)
+            except json.JSONDecodeError:
+                pass
+
+        if not auto_commit:
+            return {
+                "skipped": True,
+                "reason": "auto_git_commit 未开启",
+                "instruction": "Git 备份已跳过（未开启自动提交）",
+            }
+
+        adapter = ScriptAdapter(project_root=str(project_root))
+        message = f"[webnovel] 第{chapter_num}章（write Step 6）"
+        result = await adapter.git_commit(message)
+
+        if not result.get("success"):
+            return {
+                "skipped": False,
+                "success": False,
+                "error": result.get("error", ""),
+                "instruction": f"Git 提交失败（不影响流程）：{result.get('error', '')}",
+            }
+
+        return {
+            "skipped": False,
+            "success": True,
+            "commit_hash": result.get("commit_hash"),
+            "instruction": f"Git 提交成功：{result.get('commit_hash', '')}",
+        }
