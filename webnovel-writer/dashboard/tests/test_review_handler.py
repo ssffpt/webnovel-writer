@@ -256,15 +256,15 @@ def test_validate_input_step7_invalid_option_id():
 
 
 def test_validate_input_step7_stores_decisions():
-    """Step 7 validate_input stores decisions in handler instance."""
+    """Step 7 validate_input stores decisions in step object for context transfer."""
     handler = _handler()()
     step = StepState(step_id="step_7", status="waiting_input")
 
     decisions = [{"option_id": "auto_fix", "issue": {"message": "test"}}, {"option_id": "ignore", "issue": {}}]
     asyncio.run(handler.validate_input(step, {"decisions": decisions}))
 
-    assert hasattr(handler, '_critical_decisions')
-    assert handler._critical_decisions == decisions
+    assert hasattr(step, '_critical_decisions')
+    assert step._critical_decisions == decisions
 
 
 # ---------------------------------------------------------------------------
@@ -520,10 +520,8 @@ def test_review_handler_step8_manual_todos_written():
             {"option_id": "auto_fix", "issue": {"message": "问题1"}},
             {"option_id": "manual", "issue": {"message": "问题2"}},
         ]
-        asyncio.run(handler.validate_input(
-            StepState(step_id="step_7", status="waiting_input"),
-            {"decisions": decisions}
-        ))
+        step_7 = StepState(step_id="step_7", status="waiting_input")
+        asyncio.run(handler.validate_input(step_7, {"decisions": decisions}))
 
         context = {
             "project_root": tmpdir,
@@ -532,8 +530,15 @@ def test_review_handler_step8_manual_todos_written():
             "review_report": {},
         }
 
-        step = StepState(step_id="step_8", status="running")
-        result = asyncio.run(handler.execute_step(step, context))
+        # Step 7 execute_step transfers step._critical_decisions to context
+        # Use same step object - it now has _critical_decisions from validate_input
+        step_7_exec = StepState(step_id="step_7", status="running")
+        step_7_exec._critical_decisions = step_7._critical_decisions
+        asyncio.run(handler.execute_step(step_7_exec, context))
+
+        # Step 8 execute_step reads from context
+        step_8 = StepState(step_id="step_8", status="running")
+        result = asyncio.run(handler.execute_step(step_8, context))
 
         assert result["manual_todos"] == 1
         todo_path = webnovel_dir / "review_todos.json"

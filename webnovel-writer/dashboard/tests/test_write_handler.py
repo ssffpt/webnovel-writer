@@ -341,8 +341,8 @@ class TestExecuteStep4:
         assert "polished_text" in result
         assert result["polished_text"] != ""
         assert "fix_report" in result
-        assert result["fix_report"]["critical_fixed"] == 1
-        assert result["fix_report"]["high_fixed"] == 1
+        assert result["fix_report"]["critical_count"] == 1
+        assert result["fix_report"]["high_count"] == 1
         assert "word_count" in result
         assert result["word_count"] > 0
         assert "instruction" in result
