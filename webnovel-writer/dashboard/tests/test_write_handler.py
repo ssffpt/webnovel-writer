@@ -157,3 +157,106 @@ class TestExecuteStep:
         step = StepState(step_id="unknown_step", status="running")
         result = await handler.execute_step(step, {})
         assert result == {}
+
+
+class TestExecuteStep2A:
+    """Tests for Step 2A (draft chapter generation)."""
+
+    @pytest.mark.asyncio
+    async def test_step_2a_returns_draft_text(self, handler):
+        """Happy path: execute_step('step_2a') returns draft_text with word_count > 0."""
+        step = StepState(step_id="step_2a", status="running")
+        context = {
+            "chapter_num": 3,
+            "task_brief": {"chapter_outline": "这是一个测试大纲，包含章节的主要情节发展。"},
+        }
+        result = await handler.execute_step(step, context)
+
+        assert "draft_text" in result
+        assert result["word_count"] > 0
+        assert "instruction" in result
+        # context should be mutated
+        assert "draft_text" in context
+        assert context["draft_word_count"] > 0
+
+    @pytest.mark.asyncio
+    async def test_step_2a_fallback_contains_chapter_number(self, handler):
+        """Fallback draft includes the chapter number in heading."""
+        step = StepState(step_id="step_2a", status="running")
+        context = {
+            "chapter_num": 5,
+            "task_brief": {"chapter_outline": "测试大纲"},
+        }
+        result = await handler.execute_step(step, context)
+
+        assert "# 第5章" in result["draft_text"]
+        assert "AI 草稿占位" in result["draft_text"]
+
+    @pytest.mark.asyncio
+    async def test_step_2a_uses_outline_in_fallback(self, handler):
+        """Fallback draft includes outline summary."""
+        step = StepState(step_id="step_2a", status="running")
+        context = {
+            "chapter_num": 1,
+            "task_brief": {"chapter_outline": "这是非常长的章节大纲" * 20},
+        }
+        result = await handler.execute_step(step, context)
+
+        # Should truncate to 200 chars
+        assert "大纲摘要：" in result["draft_text"]
+        assert "这是非常长的章节大纲" in result["draft_text"]
+
+    @pytest.mark.asyncio
+    async def test_step_2a_handles_missing_task_brief(self, handler):
+        """Handles missing task_brief gracefully."""
+        step = StepState(step_id="step_2a", status="running")
+        context = {"chapter_num": 1}
+        result = await handler.execute_step(step, context)
+
+        assert "draft_text" in result
+        assert result["word_count"] > 0
+
+
+class TestExecuteStep2B:
+    """Tests for Step 2B (style adaptation)."""
+
+    @pytest.mark.asyncio
+    async def test_step_2b_fallback_returns_original_text(self, handler):
+        """Edge case: in fallback mode, adapted_text == draft_text, has_changes=False."""
+        step = StepState(step_id="step_2b", status="running")
+        context = {
+            "draft_text": "这是原始草稿文本，包含一些内容。",
+            "task_brief": {},
+        }
+        result = await handler.execute_step(step, context)
+
+        assert result["adapted_text"] == context["draft_text"]
+        assert result["has_changes"] is False
+        assert "无需调整（降级模式）" in result["changes_summary"]
+
+    @pytest.mark.asyncio
+    async def test_step_2b_returns_has_changes_and_summary(self, handler):
+        """Step 2B returns has_changes flag and changes_summary."""
+        step = StepState(step_id="step_2b", status="running")
+        context = {
+            "draft_text": "原始文本。",
+            "task_brief": {"style_reference": "简洁有力的文风"},
+        }
+        result = await handler.execute_step(step, context)
+
+        assert "adapted_text" in result
+        assert "has_changes" in result
+        assert "changes_summary" in result
+        assert "instruction" in result
+        # context should be mutated
+        assert "adapted_text" in context
+
+    @pytest.mark.asyncio
+    async def test_step_2b_handles_empty_draft_text(self, handler):
+        """Handles empty draft_text gracefully."""
+        step = StepState(step_id="step_2b", status="running")
+        context = {"draft_text": ""}
+        result = await handler.execute_step(step, context)
+
+        assert result["adapted_text"] == ""
+        assert result["has_changes"] is False

@@ -39,6 +39,10 @@ class WriteSkillHandler(SkillHandler):
             from .context_builder import ContextBuilder
             builder = ContextBuilder(context)
             return await builder.build()
+        if step.step_id == "step_2a":
+            return await self._draft_chapter(context)
+        if step.step_id == "step_2b":
+            return await self._style_adapt(context)
         if step.step_id == "step_3":
             return {"message": "六维审查（待实现）"}
         if step.step_id == "step_5":
@@ -46,6 +50,74 @@ class WriteSkillHandler(SkillHandler):
         if step.step_id == "step_6":
             return {"message": "Git 备份（待实现）"}
         return {}
+
+    async def _draft_chapter(self, context: dict) -> dict:
+        """Call AI API to generate chapter draft.
+
+        Input: execution_pack (with outline, settings, constraints)
+        Output: 2000-2500 word draft text
+
+        Fallback mode (no AI API): returns template placeholder text.
+        """
+        execution_pack = context.get("execution_pack", {})
+        task_brief = context.get("task_brief", {})
+        chapter_num = context.get("chapter_num", 1)
+
+        # TODO: actual AI call
+        # Fallback mode
+        draft = self._fallback_draft(chapter_num, task_brief)
+
+        context["draft_text"] = draft
+        context["draft_word_count"] = len(draft)
+
+        return {
+            "draft_text": draft,
+            "word_count": len(draft),
+            "instruction": "请预览草稿，确认或修改后继续",
+        }
+
+    def _fallback_draft(self, chapter_num: int, task_brief: dict) -> str:
+        """Fallback template draft when AI is unavailable."""
+        outline = task_brief.get("chapter_outline", "")
+        return (
+            f"# 第{chapter_num}章\n\n"
+            f"[AI 草稿占位 — 基于大纲生成]\n\n"
+            f"大纲摘要：{outline[:200] if outline else '无大纲'}\n\n"
+            f"{'占位正文。' * 100}\n"
+        )
+
+    async def _style_adapt(self, context: dict) -> dict:
+        """Call AI API for style adaptation.
+
+        Goals: eliminate three AI voices:
+        1. Template voice — fixed patterns, overuse of "然而"/"不禁"
+        2. Exposition voice — encyclopedic explanation of settings
+        3. Mechanical voice — lack of emotion, monotonous rhythm
+
+        Input: draft_text (from Step 2A)
+        Output: style-adapted text + diff markers
+
+        Fallback mode: returns original text unchanged.
+        """
+        draft_text = context.get("draft_text", "")
+        task_brief = context.get("task_brief", {})
+        style_reference = task_brief.get("style_reference", "")
+
+        # TODO: actual AI call
+        # Fallback mode: no modification
+        adapted_text = draft_text
+
+        context["adapted_text"] = adapted_text
+
+        # Generate diff (simplified: mark whether there were changes)
+        has_changes = adapted_text != draft_text
+
+        return {
+            "adapted_text": adapted_text,
+            "has_changes": has_changes,
+            "changes_summary": "风格适配完成" if has_changes else "无需调整（降级模式）",
+            "instruction": "请确认风格适配结果",
+        }
 
     async def validate_input(self, step: StepState, data: dict) -> str | None:
         """Validate user input for confirm steps."""
