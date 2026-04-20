@@ -394,3 +394,231 @@ async def test_write_handler_step_1_integration():
     assert "context_contract" in result
     assert "rag_mode" in result
     assert "instruction" in result
+
+
+# ---------------------------------------------------------------------------
+# Task 604: Context Agent RAG 模式集成
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_build_rag_mode_with_rag_available():
+    """RAG 可用时，extract 失败 → rag_mode='rag' → settings 包含 [RAG] 标记。"""
+    tmp_path = Path(tempfile.mkdtemp())
+    make_fake_project(tmp_path, with_idea_bank=False)
+
+    # 为 _build_rag_queries 提供大纲文件
+    vol_dir = tmp_path / "大纲" / "第1卷"
+    vol_dir.mkdir(parents=True, exist_ok=True)
+    (vol_dir / "第2章.md").write_text("主角获得金手指，开始修炼", encoding="utf-8")
+
+    async def fake_extract_chapter_context(chapter_num, context_window=5):
+        return {"success": False, "error": "script unavailable", "fallback": True}
+
+    async def fake_load_file_context(chapter_num, context_window=5):
+        return {
+            "success": True,
+            "fallback": True,
+            "outline": "章节大纲",
+            "previous_summaries": ["摘要1"],
+            "settings": "基础设定",
+            "foreshadowing": ["伏笔A"],
+            "character_states": {},
+            "constraints": "",
+        }
+
+    async def fake_rag_search(query, top_k=10):
+        return {
+            "success": True,
+            "results": [
+                {"text": "RAG检索到的设定片段", "source": "设定.md", "score": 0.9, "metadata": {}},
+            ],
+            "error": None,
+        }
+
+    def fake_rag_is_available():
+        return True
+
+    context = {
+        "project_root": str(tmp_path),
+        "chapter_num": 2,
+        "mode": "standard",
+    }
+    builder = ContextBuilder(context)
+    builder.adapter.extract_chapter_context = fake_extract_chapter_context
+    builder.adapter.load_file_context = fake_load_file_context
+    builder.adapter.rag_search = fake_rag_search
+    builder.adapter.rag_is_available = fake_rag_is_available
+
+    result = await builder.build()
+
+    assert result["rag_mode"] == "rag"
+    assert "RAG 增强模式" in result["instruction"]
+    # settings 应包含 [RAG] 标记
+    assert "[RAG]" in result["task_brief"]["relevant_settings"]
+
+
+@pytest.mark.asyncio
+async def test_build_rag_not_available_degraded():
+    """RAG 不可用时 → rag_mode='degraded'。"""
+    tmp_path = Path(tempfile.mkdtemp())
+    make_fake_project(tmp_path, with_idea_bank=False)
+
+    async def fake_extract_chapter_context(chapter_num, context_window=5):
+        return {"success": False, "error": "script unavailable", "fallback": True}
+
+    async def fake_load_file_context(chapter_num, context_window=5):
+        return {
+            "success": True,
+            "fallback": True,
+            "outline": "",
+            "previous_summaries": [],
+            "settings": "",
+            "foreshadowing": [],
+            "character_states": {},
+            "constraints": "",
+        }
+
+    def fake_rag_is_available():
+        return False
+
+    context = {
+        "project_root": str(tmp_path),
+        "chapter_num": 1,
+        "mode": "standard",
+    }
+    builder = ContextBuilder(context)
+    builder.adapter.extract_chapter_context = fake_extract_chapter_context
+    builder.adapter.load_file_context = fake_load_file_context
+    builder.adapter.rag_is_available = fake_rag_is_available
+
+    result = await builder.build()
+
+    assert result["rag_mode"] == "degraded"
+    assert "降级模式" in result["instruction"]
+
+
+@pytest.mark.asyncio
+async def test_build_rag_search_empty_results():
+    """RAG 检索返回空结果 → 合并后数据与降级模式相同，不报错。"""
+    tmp_path = Path(tempfile.mkdtemp())
+    make_fake_project(tmp_path, with_idea_bank=False)
+
+    async def fake_extract_chapter_context(chapter_num, context_window=5):
+        return {"success": False, "fallback": True}
+
+    async def fake_load_file_context(chapter_num, context_window=5):
+        return {
+            "success": True,
+            "fallback": True,
+            "outline": "章节大纲",
+            "previous_summaries": ["摘要1"],
+            "settings": "基础设定",
+            "foreshadowing": [],
+            "character_states": {},
+            "constraints": "",
+        }
+
+    async def fake_rag_search(query, top_k=10):
+        return {"success": True, "results": [], "error": None}
+
+    def fake_rag_is_available():
+        return True
+
+    context = {
+        "project_root": str(tmp_path),
+        "chapter_num": 1,
+        "mode": "standard",
+    }
+    builder = ContextBuilder(context)
+    builder.adapter.extract_chapter_context = fake_extract_chapter_context
+    builder.adapter.load_file_context = fake_load_file_context
+    builder.adapter.rag_search = fake_rag_search
+    builder.adapter.rag_is_available = fake_rag_is_available
+
+    result = await builder.build()
+
+    assert result["rag_mode"] == "rag"
+    # 无 [RAG] 标记（因为空结果）
+    assert "[RAG]" not in result["task_brief"]["relevant_settings"]
+
+
+@pytest.mark.asyncio
+async def test_build_rag_search_failure_uses_base_data():
+    """rag_search 失败 → 跳过该维度，使用基础数据。"""
+    tmp_path = Path(tempfile.mkdtemp())
+    make_fake_project(tmp_path, with_idea_bank=False)
+
+    # 提供大纲文件让 _build_rag_queries 有内容
+    vol_dir = tmp_path / "大纲" / "第1卷"
+    vol_dir.mkdir(parents=True, exist_ok=True)
+    (vol_dir / "第1章.md").write_text("主角修炼", encoding="utf-8")
+
+    async def fake_extract_chapter_context(chapter_num, context_window=5):
+        return {"success": False, "fallback": True}
+
+    async def fake_load_file_context(chapter_num, context_window=5):
+        return {
+            "success": True,
+            "fallback": True,
+            "outline": "章节大纲",
+            "previous_summaries": ["摘要1"],
+            "settings": "基础设定",
+            "foreshadowing": [],
+            "character_states": {},
+            "constraints": "",
+        }
+
+    async def fake_rag_search(query, top_k=10):
+        return {"success": False, "results": [], "error": "API error"}
+
+    def fake_rag_is_available():
+        return True
+
+    context = {
+        "project_root": str(tmp_path),
+        "chapter_num": 1,
+        "mode": "standard",
+    }
+    builder = ContextBuilder(context)
+    builder.adapter.extract_chapter_context = fake_extract_chapter_context
+    builder.adapter.load_file_context = fake_load_file_context
+    builder.adapter.rag_search = fake_rag_search
+    builder.adapter.rag_is_available = fake_rag_is_available
+
+    result = await builder.build()
+
+    assert result["rag_mode"] == "rag"
+    # 基础数据仍在
+    assert result["task_brief"]["chapter_outline"] == "章节大纲"
+
+
+@pytest.mark.asyncio
+async def test_build_full_mode_no_rag_needed():
+    """extract_chapter_context 成功 → rag_mode='full' → 不走 RAG 路径。"""
+    tmp_path = Path(tempfile.mkdtemp())
+    make_fake_project(tmp_path, with_idea_bank=False)
+
+    async def fake_extract_chapter_context(chapter_num, context_window=5):
+        return {
+            "success": True,
+            "outline": "完整大纲",
+            "previous_summaries": [],
+            "settings": "完整设定",
+            "foreshadowing": [],
+            "character_states": {},
+            "constraints": "",
+        }
+
+    context = {
+        "project_root": str(tmp_path),
+        "chapter_num": 1,
+        "mode": "standard",
+    }
+    builder = ContextBuilder(context)
+    builder.adapter.extract_chapter_context = fake_extract_chapter_context
+
+    result = await builder.build()
+
+    assert result["rag_mode"] == "full"
+    assert "完整模式" in result["instruction"]

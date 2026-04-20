@@ -483,3 +483,52 @@ class TestSliceScenes:
         scenes = await agent._slice_scenes(str(chapter_path))
 
         assert len(scenes) == 0
+
+
+# ---------------------------------------------------------------------------
+# Task 604: RAG 增量索引
+# ---------------------------------------------------------------------------
+
+class TestDataAgentRAGIndex:
+    """RAG incremental index on chapter save."""
+
+    @pytest.mark.asyncio
+    async def test_rag_indexed_when_available(self, basic_context, temp_project):
+        """When RAG is available, DataAgent calls rag_add_doc after save."""
+        agent = DataAgent(basic_context)
+
+        # Mock RAG methods
+        agent.adapter.rag_is_available = MagicMock(return_value=True)
+        agent.adapter.rag_add_doc = AsyncMock(return_value={"success": True, "chunks_added": 1})
+
+        result = await agent.run()
+
+        assert result["results"]["rag_indexed"] is True
+        agent.adapter.rag_add_doc.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_rag_not_indexed_when_unavailable(self, basic_context, temp_project):
+        """When RAG is not available, DataAgent skips rag_add_doc."""
+        agent = DataAgent(basic_context)
+
+        agent.adapter.rag_is_available = MagicMock(return_value=False)
+        agent.adapter.rag_add_doc = AsyncMock(return_value={"success": True, "chunks_added": 1})
+
+        result = await agent.run()
+
+        assert "rag_indexed" not in result["results"]
+        agent.adapter.rag_add_doc.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_rag_add_doc_failure_handled(self, basic_context, temp_project):
+        """When rag_add_doc fails, rag_indexed=False but pipeline continues."""
+        agent = DataAgent(basic_context)
+
+        agent.adapter.rag_is_available = MagicMock(return_value=True)
+        agent.adapter.rag_add_doc = AsyncMock(side_effect=Exception("API error"))
+
+        result = await agent.run()
+
+        assert result["results"]["rag_indexed"] is False
+        # Pipeline still completes
+        assert result["results"]["chapter_saved"] is not None

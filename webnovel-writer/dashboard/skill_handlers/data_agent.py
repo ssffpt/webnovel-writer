@@ -45,6 +45,15 @@ class DataAgent:
         debts = await self._detect_debts()
         results["debts_detected"] = len(debts)
 
+        # 8. 增量更新 RAG 索引（如果可用）
+        if self.adapter.rag_is_available():
+            if chapter_path:
+                try:
+                    rag_result = await self.adapter.rag_add_doc(chapter_path, doc_type="chapter")
+                    results["rag_indexed"] = rag_result.get("success", False)
+                except Exception:
+                    results["rag_indexed"] = False
+
         self.context["data_agent_results"] = results
 
         return {

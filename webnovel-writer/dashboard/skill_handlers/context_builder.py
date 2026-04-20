@@ -33,12 +33,18 @@ class ContextBuilder:
         rag_mode = "full"
 
         if not ctx_data.get("success") or ctx_data.get("fallback"):
-            # 降级模式：直接从文件系统加载
-            ctx_data = await self.adapter.load_file_context(
-                chapter_num=self.chapter_num,
-                context_window=5,
-            )
-            rag_mode = "degraded"
+            # Script 不可用，检查 RAG 是否可用
+            if self.adapter.rag_is_available():
+                # RAG 模式：文件系统 + 向量检索
+                ctx_data = await self._build_with_rag()
+                rag_mode = "rag"
+            else:
+                # 纯降级模式
+                ctx_data = await self.adapter.load_file_context(
+                    chapter_num=self.chapter_num,
+                    context_window=5,
+                )
+                rag_mode = "degraded"
 
         # 构建 7 板块任务书
         task_brief = self._build_task_brief(ctx_data)
@@ -59,8 +65,92 @@ class ContextBuilder:
             "task_brief": task_brief,
             "context_contract": contract,
             "rag_mode": rag_mode,
-            "instruction": f"上下文构建完成（{'完整模式' if rag_mode == 'full' else 'RAG 降级模式'}）",
+            "instruction": self._get_mode_instruction(rag_mode),
         }
+
+    async def _build_with_rag(self) -> dict:
+        """RAG 模式：文件系统基础数据 + 向量检索增强。"""
+        # 1. 先加载文件系统基础数据
+        base_data = await self.adapter.load_file_context(
+            chapter_num=self.chapter_num,
+            context_window=5,
+        )
+
+        # 2. 构建 RAG 查询
+        queries = self._build_rag_queries()
+
+        # 3. 执行向量检索
+        rag_results = {}
+        for query_name, query_text in queries.items():
+            try:
+                result = await self.adapter.rag_search(query=query_text, top_k=5)
+                if result.get("success"):
+                    rag_results[query_name] = result.get("results", [])
+            except Exception:
+                pass  # 跳过该查询维度
+
+        # 4. 将 RAG 结果合并到基础数据
+        enriched = self._merge_rag_results(base_data, rag_results)
+
+        return enriched
+
+    def _build_rag_queries(self) -> dict:
+        """构建 RAG 检索查询（多维度）。"""
+        # 从文件系统加载本章大纲
+        outline = ""
+        outline_dir = self.project_root / "大纲"
+        if outline_dir.exists():
+            for vol_dir in outline_dir.iterdir():
+                if vol_dir.is_dir():
+                    ch_file = vol_dir / f"第{self.chapter_num}章.md"
+                    if ch_file.exists():
+                        outline = ch_file.read_text(encoding="utf-8")[:200]
+                        break
+
+        queries = {}
+        if outline:
+            queries["related_settings"] = f"设定 角色能力 力量等级 {outline}"
+            queries["related_foreshadowing"] = f"伏笔 暗线 悬念 {outline}"
+            queries["related_context"] = f"前文 场景 {outline}"
+
+        return queries
+
+    def _merge_rag_results(self, base_data: dict, rag_results: dict) -> dict:
+        """将 RAG 检索结果合并到基础数据。"""
+        enriched = {**base_data}
+        enriched["fallback"] = False  # 不再是降级模式
+
+        # 合并相关设定
+        if "related_settings" in rag_results:
+            rag_settings = "\n\n".join(
+                f"[RAG] {r['text']}" for r in rag_results["related_settings"]
+            )
+            if rag_settings:
+                enriched["settings"] = enriched.get("settings", "") + "\n\n" + rag_settings
+
+        # 合并相关伏笔
+        if "related_foreshadowing" in rag_results:
+            rag_foreshadowing = [
+                {"source": "rag", "text": r["text"], "score": r.get("score", 0)}
+                for r in rag_results["related_foreshadowing"]
+            ]
+            enriched["foreshadowing"] = enriched.get("foreshadowing", []) + rag_foreshadowing
+
+        # 合并前文关联
+        if "related_context" in rag_results:
+            rag_context = [r["text"] for r in rag_results["related_context"]]
+            enriched["previous_summaries"] = enriched.get("previous_summaries", []) + rag_context
+
+        return enriched
+
+    def _get_mode_instruction(self, rag_mode: str) -> str:
+        """根据模式返回说明文本。"""
+        if rag_mode == "full":
+            return "上下文构建完成（完整模式）"
+        elif rag_mode == "rag":
+            return "上下文构建完成（RAG 增强模式）"
+        else:
+            return "上下文构建完成（RAG 未配置，使用文件系统降级模式）"
 
     def _build_task_brief(self, ctx_data: dict) -> dict:
         """构建 7 板块任务书。"""
