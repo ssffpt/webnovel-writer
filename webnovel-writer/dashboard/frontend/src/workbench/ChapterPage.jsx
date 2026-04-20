@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchFileTree, readFile, saveFile } from '../api.js'
 import WriteFlow from './WriteFlow.jsx'
+import ReviewFlow from './ReviewFlow.jsx'
 
 function flattenFiles(nodes = []) {
   const files = []
@@ -41,6 +42,7 @@ export default function ChapterPage({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [pendingSwitchPath, setPendingSwitchPath] = useState(null)
   const [editMode, setEditMode] = useState('manual')
+  const [showReview, setShowReview] = useState(false)
 
   // Word count (Chinese: count non-whitespace characters)
   const wordCount = useMemo(() => draft.replace(/\s/g, '').length, [draft])
@@ -330,6 +332,13 @@ export default function ChapterPage({
             />
           ) : (
             <>
+              <button
+                type="button"
+                className="btn-review"
+                onClick={() => setShowReview(true)}
+              >
+                审查本章
+              </button>
               {loadContentError ? <p className="error-text">{loadContentError}</p> : null}
 
               <textarea
@@ -362,6 +371,18 @@ export default function ChapterPage({
               <button type="button" className="workbench-nav-button" onClick={cancelSwitchFile}>取消</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {showReview && (
+        <div className="review-side-panel">
+          <ReviewFlow
+            projectRoot={selectedPath ? selectedPath.split('/chapters/')[0] : ''}
+            chapterStart={selectedPath ? extractChapterNumber(selectedPath) || 1 : 1}
+            chapterEnd={selectedPath ? extractChapterNumber(selectedPath) || 1 : 1}
+            onCompleted={() => setShowReview(false)}
+            onCancelled={() => setShowReview(false)}
+          />
         </div>
       )}
     </section>
