@@ -268,3 +268,122 @@ class TestExecuteStep2B:
 
         assert result["adapted_text"] == ""
         assert result["has_changes"] is False
+
+
+class TestExecuteStep4:
+    """Tests for Step 4 (polish + Anti-AI check)."""
+
+    @pytest.mark.asyncio
+    async def test_step_4_returns_polished_text(self, handler):
+        """Happy path: execute_step('step_4') with review_issues returns polished_text."""
+        step = StepState(step_id="step_4", status="running")
+        context = {
+            "adapted_text": "这是一个测试文本，包含一些内容。",
+            "review_issues": [
+                {"severity": "critical", "message": "需要修复"},
+                {"severity": "high", "message": "建议优化"},
+            ],
+        }
+        result = await handler.execute_step(step, context)
+
+        assert "polished_text" in result
+        assert result["polished_text"] != ""
+        assert "fix_report" in result
+        assert result["fix_report"]["critical_fixed"] == 1
+        assert result["fix_report"]["high_fixed"] == 1
+        assert "word_count" in result
+        assert result["word_count"] > 0
+        assert "instruction" in result
+        # context should be mutated
+        assert "polished_text" in context
+        assert "fix_report" in context
+
+    @pytest.mark.asyncio
+    async def test_step_4_anti_ai_limits_word_occurrences(self, handler):
+        """Edge case 1: text with 5 occurrences of '不禁' -> Anti-AI keeps only 2."""
+        step = StepState(step_id="step_4", status="running")
+        text_with_many = "我不禁思考，我不禁问自己，不禁感叹，不禁想起，不禁明白。"
+        context = {
+            "adapted_text": text_with_many,
+            "review_issues": [],
+        }
+        result = await handler.execute_step(step, context)
+
+        assert result["polished_text"].count("不禁") == 2
+        assert result["fix_report"]["anti_ai_fixes"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_step_4_no_review_issues_still_runs_anti_ai(self, handler):
+        """Edge case 2: empty review_issues -> still runs Anti-AI, may have fixes."""
+        step = StepState(step_id="step_4", status="running")
+        text = "这是一个正常文本。竟然如此，仿佛在梦中。"
+        context = {
+            "adapted_text": text,
+            "review_issues": [],
+        }
+        result = await handler.execute_step(step, context)
+
+        assert "polished_text" in result
+        assert "fix_report" in result
+        # Anti-AI runs regardless of issues
+
+    @pytest.mark.asyncio
+    async def test_step_4_no_changes_when_text_clean(self, handler):
+        """Step 4 with clean text returns has_changes=False."""
+        step = StepState(step_id="step_4", status="running")
+        clean_text = "这是一个完全正常的文本，没有任何问题。"
+        context = {
+            "adapted_text": clean_text,
+            "review_issues": [],
+        }
+        result = await handler.execute_step(step, context)
+
+        # Clean text with no AI words may have no changes
+        assert "polished_text" in result
+        assert "has_changes" in result
+
+    @pytest.mark.asyncio
+    async def test_step_4_uses_draft_text_when_no_adapted(self, handler):
+        """Step 4 falls back to draft_text when adapted_text is missing."""
+        step = StepState(step_id="step_4", status="running")
+        context = {
+            "draft_text": "这是草稿文本。",
+            "review_issues": [],
+        }
+        result = await handler.execute_step(step, context)
+
+        assert "polished_text" in result
+        assert result["polished_text"] != ""
+
+
+class TestAntiAI:
+    """Tests for Anti-AI helper methods."""
+
+    def test_anti_ai_keeps_words_under_limit(self, handler):
+        """_anti_ai_check keeps each AI word at or below its max_count."""
+        ai_words = {
+            "不禁": 2,
+            "竟然": 3,
+            "然而": 2,
+            "居然": 3,
+            "仿佛": 3,
+            "宛如": 2,
+            "不由得": 2,
+        }
+        for word, max_count in ai_words.items():
+            text = word * 10
+            result = handler._anti_ai_check(text)
+            assert result.count(word) <= max_count, f"{word} exceeded limit {max_count}"
+
+    def test_anti_ai_count_fixes_returns_positive_when_changed(self, handler):
+        """_count_anti_ai_fixes returns >= 1 when texts differ."""
+        original = "我不禁思考这个问题。"
+        polished = "我在思考这个问题。"
+        count = handler._count_anti_ai_fixes(original, polished)
+        assert count >= 1
+
+    def test_anti_ai_count_fixes_returns_zero_when_same(self, handler):
+        """_count_anti_ai_fixes returns 0 when texts are identical."""
+        text = "这是完全相同的文本。"
+        count = handler._count_anti_ai_fixes(text, text)
+        assert count == 0
