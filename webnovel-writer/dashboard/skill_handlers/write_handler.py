@@ -36,7 +36,9 @@ class WriteSkillHandler(SkillHandler):
     async def execute_step(self, step: StepState, context: dict) -> dict:
         """Execute an auto step. Full implementations come in later tasks."""
         if step.step_id == "step_1":
-            return {"message": "Context Agent（待实现）"}
+            from .context_builder import ContextBuilder
+            builder = ContextBuilder(context)
+            return await builder.build()
         if step.step_id == "step_3":
             return {"message": "六维审查（待实现）"}
         if step.step_id == "step_5":

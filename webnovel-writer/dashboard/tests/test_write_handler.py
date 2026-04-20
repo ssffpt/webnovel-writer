@@ -120,10 +120,19 @@ class TestValidateInput:
 
 class TestExecuteStep:
     @pytest.mark.asyncio
-    async def test_step_1_returns_context_agent_placeholder(self, handler):
+    async def test_step_1_returns_context_agent_result(self, handler):
         step = StepState(step_id="step_1", status="running")
-        result = await handler.execute_step(step, {})
-        assert result == {"message": "Context Agent（待实现）"}
+        context = {
+            "project_root": "/nonexistent",
+            "chapter_num": 1,
+            "mode": "standard",
+        }
+        result = await handler.execute_step(step, context)
+        # Now returns real ContextBuilder output
+        assert "task_brief" in result
+        assert "context_contract" in result
+        assert "rag_mode" in result
+        assert "instruction" in result
 
     @pytest.mark.asyncio
     async def test_step_3_returns_review_placeholder(self, handler):
