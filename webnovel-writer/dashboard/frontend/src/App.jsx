@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   createTask,
   fetchCurrentTask,
-  fetchGenres,
-  fetchGoldenFingerTypes,
   fetchJSON,
   fetchProjects,
   fetchRecentActivity,
@@ -23,7 +21,6 @@ import {
 } from './workbench/data.js'
 import TopBar from './workbench/TopBar.jsx'
 import AIAssistant from './workbench/AIAssistant.jsx'
-import CreateWizard from './workbench/CreateWizard.jsx'
 import OverviewPage from './workbench/OverviewPage.jsx'
 import ChapterPage from './workbench/ChapterPage.jsx'
 import OutlinePage from './workbench/OutlinePage.jsx'
@@ -101,7 +98,6 @@ export default function App() {
   const [projectInfo, setProjectInfo] = useState(null)
   const [projects, setProjects] = useState([])
   const [showWizard, setShowWizard] = useState(false)
-  const [wizardPrefill, setWizardPrefill] = useState(null)
   const [aiOpen, setAiOpen] = useState(false)
   const [focusModeActive, setFocusModeActive] = useState(false)
   const [recentActivities, setRecentActivities] = useState([])
@@ -111,11 +107,6 @@ export default function App() {
     message: '',
     onConfirm: null,
   })
-  const [genres, setGenres] = useState([])
-  const [genresLoading, setGenresLoading] = useState(false)
-  const [genresLoadError, setGenresLoadError] = useState('')
-  const [goldenFingerTypes, setGoldenFingerTypes] = useState([])
-
   // --- Derived values (must be defined before useEffects that reference them) ---
 
   const activePage = normalizeWorkbenchPage(workbenchState.page)
@@ -282,31 +273,6 @@ export default function App() {
     setWorkbenchState(prev => ({ ...prev, page }))
   }, [])
 
-  const ensureWizardOptionsLoaded = useCallback(() => {
-    if (genres.length === 0) {
-      setGenresLoading(true)
-      setGenresLoadError('')
-      fetchGenres()
-        .then(r => setGenres(r.genres || []))
-        .catch(() => setGenresLoadError('题材加载失败，请稍后重试'))
-        .finally(() => setGenresLoading(false))
-    }
-    if (goldenFingerTypes.length === 0) {
-      fetchGoldenFingerTypes().then(r => setGoldenFingerTypes(r.types || [])).catch(() => {})
-    }
-  }, [genres.length, goldenFingerTypes.length])
-
-  const handleCreateNew = useCallback(() => {
-    setWizardPrefill(null)
-    setShowWizard(true)
-    ensureWizardOptionsLoaded()
-  }, [ensureWizardOptionsLoaded])
-
-  const handleContinueSetup = useCallback(() => {
-    setShowWizard(true)
-    ensureWizardOptionsLoaded()
-  }, [ensureWizardOptionsLoaded])
-
   const handleSwitchProject = useCallback(async (path) => {
     try {
       await switchProjectAPI(path)
@@ -318,7 +284,15 @@ export default function App() {
     }
   }, [loadSummary])
 
-  const handleWizardCreated = useCallback((result) => {
+  const handleCreateNew = useCallback(() => {
+    setShowWizard(true)
+  }, [])
+
+  const handleWizardClosed = useCallback(() => {
+    setShowWizard(false)
+  }, [])
+
+  const handleWizardCompleted = useCallback(() => {
     setShowWizard(false)
     loadSummary()
     fetchProjects().then(r => setProjects(r.projects || []))
@@ -352,6 +326,18 @@ export default function App() {
           loadSummary()
           return
         }
+        // Dispatch skill events so SkillFlowPanel can listen
+        if (
+          event?.type === 'skill.step' ||
+          event?.type === 'skill.log' ||
+          event?.type === 'skill.completed' ||
+          event?.type === 'skill.failed' ||
+          event?.type === 'skill.cancelled'
+        ) {
+          window.dispatchEvent(new CustomEvent('skillEvent', { detail: event }))
+          return
+        }
+
         if (event?.type === 'task.updated' && event.task) {
           const task = event.task
           activeTaskIdRef.current = task.id
@@ -515,7 +501,9 @@ export default function App() {
     projectInfo,
     recentActivities,
     onCreateNew: handleCreateNew,
-    onContinueSetup: handleContinueSetup,
+    showWizard,
+    onWizardClosed: handleWizardClosed,
+    onWizardCompleted: handleWizardCompleted,
     onNavigateToPage: handleNavigateToPage,
     onRunAction: handleRunAction,
     onFocusModeChange: handleFocusModeChange,
@@ -559,20 +547,6 @@ export default function App() {
           onNavigateToPage={handleNavigateToPage}
           visible={aiOpen}
           onToggle={() => setAiOpen(prev => !prev)}
-        />
-      )}
-
-      {/* CreateWizard */}
-      {showWizard && (
-        <CreateWizard
-          open={showWizard}
-          onClose={() => setShowWizard(false)}
-          onCreated={handleWizardCreated}
-          genres={genres}
-          genresLoading={genresLoading}
-          genresLoadError={genresLoadError}
-          goldenFingerTypes={goldenFingerTypes}
-          prefillData={wizardPrefill}
         />
       )}
 
