@@ -50,6 +50,9 @@ class ReviewSkillHandler(SkillHandler):
         if step.step_id == "step_6":
             return await self._writeback_state(context)
         if step.step_id == "step_7":
+            # Transfer decisions from step object to context (stored by validate_input)
+            if hasattr(step, "_critical_decisions"):
+                context["_critical_decisions"] = step._critical_decisions
             return await self._handle_critical_issues(context)
         if step.step_id == "step_8":
             return await self._finalize(context)
@@ -68,7 +71,8 @@ class ReviewSkillHandler(SkillHandler):
             for d in decisions:
                 if d.get("option_id") not in valid_options:
                     return f"无效的修复方案：{d.get('option_id')}"
-            self._critical_decisions = decisions
+            # Store decisions in step object for later retrieval by execute_step
+            step._critical_decisions = decisions
             return None
         return None
 
@@ -259,6 +263,8 @@ class ReviewSkillHandler(SkillHandler):
                     chapter_results.append(result)
 
             all_chapter_results[ch_num] = chapter_results
+            # Note: step.progress mutation is lost after this method returns.
+            # Progress is tracked via SSE in SkillRunner, not via step object mutation.
             step.progress = (i + 1) / total
 
         context["all_chapter_results"] = all_chapter_results
@@ -507,7 +513,7 @@ class ReviewSkillHandler(SkillHandler):
         )
 
         # 2. 处理 critical 问题决策
-        decisions = getattr(self, '_critical_decisions', [])
+        decisions = context.get("_critical_decisions", [])
         manual_todos = []
         for d in decisions:
             if d.get("option_id") == "manual":
