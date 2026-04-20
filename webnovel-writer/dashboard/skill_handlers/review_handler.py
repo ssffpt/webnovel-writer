@@ -42,7 +42,12 @@ class ReviewSkillHandler(SkillHandler):
             return await self._load_project_state(context)
         if step.step_id == "step_3":
             return await self._run_parallel_review(step, context)
-        # step_4 ~ step_8 in future tasks
+        if step.step_id == "step_4":
+            return await self._generate_report(context)
+        if step.step_id == "step_5":
+            return await self._save_metrics(context)
+        if step.step_id == "step_6":
+            return await self._writeback_state(context)
         return {}
 
     async def validate_input(self, step: StepState, data: dict) -> str | None:
@@ -307,3 +312,110 @@ class ReviewSkillHandler(SkillHandler):
             constraints.append(c.get("content", ""))
 
         return constraints
+
+    # ------------------------------------------------------------------
+    # Step 4: Generate review report
+    # ------------------------------------------------------------------
+
+    async def _generate_report(self, context: dict) -> dict:
+        """生成结构化审查报告。"""
+        summary = context.get("review_summary", {})
+        all_results = context.get("all_chapter_results", {})
+
+        report = {
+            "overall": {
+                "avg_score": summary.get("avg_score", 0),
+                "dimension_scores": summary.get("dimension_avg", {}),
+                "total_issues": summary.get("total_issues", 0),
+                "verdict": self._get_verdict(summary.get("avg_score", 0)),
+            },
+            "chapters": {},
+            "priority_fixes": [],
+            "suggestions": [],
+        }
+
+        for ch_num, results in all_results.items():
+            ch_score = sum(r["score"] for r in results) / len(results) if results else 0
+            report["chapters"][ch_num] = {
+                "score": round(ch_score, 1),
+                "dimensions": {r["dimension"]: r["score"] for r in results},
+                "issues_count": sum(len(r.get("issues", [])) for r in results),
+            }
+
+        critical = summary.get("critical_issues", [])
+        high = summary.get("high_issues", [])
+        report["priority_fixes"] = critical + high
+        report["suggestions"] = self._generate_suggestions(summary)
+
+        context["review_report"] = report
+
+        return {
+            "report": report,
+            "instruction": "请确认审查报告",
+        }
+
+    def _get_verdict(self, avg_score: float) -> str:
+        if avg_score >= 8.5:
+            return "优秀"
+        elif avg_score >= 7.0:
+            return "良好"
+        elif avg_score >= 6.0:
+            return "合格"
+        else:
+            return "需要修改"
+
+    def _generate_suggestions(self, summary: dict) -> list[str]:
+        suggestions = []
+        dim_avg = summary.get("dimension_avg", {})
+
+        if dim_avg.get("爽点密度", 10) < 6:
+            suggestions.append("增加情节转折和情绪波动，提升爽点密度")
+        if dim_avg.get("设定一致性", 10) < 6:
+            suggestions.append("检查设定矛盾，确保力量体系和世界观一致")
+        if dim_avg.get("节奏比例", 10) < 6:
+            suggestions.append("调整对话/描写/动作比例，避免大段纯叙述")
+        if dim_avg.get("人物OOC", 10) < 6:
+            suggestions.append("检查角色行为是否符合已建立的性格特征")
+        if dim_avg.get("叙事连贯性", 10) < 6:
+            suggestions.append("检查前后文逻辑，消除跳跃和矛盾")
+        if dim_avg.get("追读力", 10) < 6:
+            suggestions.append("强化章末钩子，增加悬念和期待感")
+
+        return suggestions
+
+    # ------------------------------------------------------------------
+    # Step 5: Save metrics to index.db
+    # ------------------------------------------------------------------
+
+    async def _save_metrics(self, context: dict) -> dict:
+        """Step 5: 保存审查指标到 index.db。"""
+        from .review_storage import ReviewStorage
+
+        storage = ReviewStorage(context.get("project_root", "."))
+        result = storage.save_metrics(
+            context.get("all_chapter_results", {}),
+            context.get("review_summary", {}),
+        )
+
+        return {
+            "metrics_saved": True,
+            "session_id": result.get("session_id"),
+            "instruction": "审查指标已保存",
+        }
+
+    # ------------------------------------------------------------------
+    # Step 6: Writeback state.json
+    # ------------------------------------------------------------------
+
+    async def _writeback_state(self, context: dict) -> dict:
+        """Step 6: 写回审查记录到 state.json。"""
+        from .review_storage import ReviewStorage
+
+        storage = ReviewStorage(context.get("project_root", "."))
+        result = storage.writeback_state(context.get("all_chapter_results", {}))
+
+        return {
+            "state_updated": True,
+            "chapters_updated": result.get("chapters_updated", []),
+            "instruction": "审查记录已写回 state.json",
+        }
