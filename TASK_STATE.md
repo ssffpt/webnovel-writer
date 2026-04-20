@@ -1,44 +1,44 @@
 # TASK_STATE
 
 ## 当前进度
-Phase: 0
-Current Task: task-001
-Status: pending
+Phase: 1
+Current Task: task-101
+Status: completed
 
 ## Phase 0: SkillRunner 基础设施
 
-- [ ] task-001 Skill 数据模型
-- [ ] task-002 SkillRunner 状态机 (blocked by: task-001)
-- [ ] task-003 SkillRegistry + Echo 测试 Skill (blocked by: task-002)
-- [ ] task-004 Skill API 端点 (blocked by: task-003)
-- [ ] task-005 SSE Skill 事件推送 (blocked by: task-004)
-- [ ] task-006 前端 SkillFlowPanel (blocked by: task-005)
+- [x] task-001 Skill 数据模型
+- [x] task-002 SkillRunner 状态机
+- [x] task-003 SkillRegistry + Echo 测试 Skill
+- [x] task-004 Skill API 端点 (blocked by: task-003)
+- [x] task-005 SSE Skill 事件推送 (blocked by: task-004)
+- [x] task-006 前端 SkillFlowPanel (blocked by: task-005)
 
 ## Phase 1: Init 升级（6 步向导）
 
-- [ ] task-101 InitSkillHandler 骨架
-- [ ] task-102 Step 1-4 表单采集
-- [ ] task-103 Step 5 创意约束包生成
-- [ ] task-104 Step 6 一致性复述 + 充分性闸门 + 执行
-- [ ] task-105 InitWizard 前端组件
-- [ ] task-106 删除 CreateWizard + 迁移入口
+- [x] task-101 InitSkillHandler 骨架
+- [x] task-102 Step 1-4 表单采集
+- [x] task-103 Step 5 创意约束包生成
+- [x] task-104 Step 6 一致性复述 + 充分性闸门 + 执行
+- [x] task-105 InitWizard 前端组件
+- [x] task-106 删除 CreateWizard + 迁移入口
 
 ## Phase 2: Plan 实现（卷级规划）
 
-- [ ] task-201 PlanSkillHandler 骨架 + Step 1-3
-- [ ] task-202 Step 4 节拍表 + Step 4.5 时间线
-- [ ] task-203 Step 5 卷骨架
-- [ ] task-204 Step 6 章节大纲批量生成
-- [ ] task-205 Step 7 回写设定集 + Step 8 验证
-- [ ] task-206 PlanFlow 前端组件 + OutlinePage 集成
+- [x] task-201 PlanSkillHandler 骨架 + Step 1-3
+- [x] task-202 Step 4 节拍表 + Step 4.5 时间线
+- [x] task-203 Step 5 卷骨架
+- [x] task-204 Step 6 章节大纲批量生成
+- [x] task-205 Step 7 回写设定集 + Step 8 验证
+- [x] task-206 PlanFlow 前端组件 + OutlinePage 集成
 
 ## Phase 3: Write 实现（章节创作）
 
-- [ ] task-301 ScriptAdapter 实现
+- [x] task-301 ScriptAdapter 实现
 - [ ] task-302 WriteSkillHandler 骨架 + 模式选择
 - [ ] task-303 Step 1 Context Agent（含 RAG 降级）
-- [ ] task-304 Step 2A 正文起草 + Step 2B 风格适配
-- [ ] task-305 Step 3 六维审查（并行检查器）
+- [x] task-304 Step 2A 正文起草 + Step 2B 风格适配
+- [x] task-305 Step 3 六维审查（并行检查器）
 - [ ] task-306 Step 4 润色 + Anti-AI 终检
 - [ ] task-307 Step 5 Data Agent + Step 6 Git 备份
 - [ ] task-308 WriteFlow 前端组件 + ChapterPage 集成

@@ -1,6 +1,8 @@
 """WriteSkillHandler — 6-step chapter writing workflow."""
 from __future__ import annotations
 
+import asyncio
+
 from ..skill_runner import SkillHandler
 from ..skill_models import StepDefinition, StepState
 
@@ -44,7 +46,7 @@ class WriteSkillHandler(SkillHandler):
         if step.step_id == "step_2b":
             return await self._style_adapt(context)
         if step.step_id == "step_3":
-            return {"message": "六维审查（待实现）"}
+            return await self._run_review(step, context)
         if step.step_id == "step_5":
             return {"message": "Data Agent（待实现）"}
         if step.step_id == "step_6":
@@ -117,6 +119,78 @@ class WriteSkillHandler(SkillHandler):
             "has_changes": has_changes,
             "changes_summary": "风格适配完成" if has_changes else "无需调整（降级模式）",
             "instruction": "请确认风格适配结果",
+        }
+
+    async def _run_review(self, step: StepState, context: dict) -> dict:
+        """并行执行六维审查。"""
+        from .review_checkers import (
+            HookDensityChecker,
+            SettingConsistencyChecker,
+            RhythmRatioChecker,
+            CharacterOOCChecker,
+            NarrativeCoherenceChecker,
+            ReadabilityChecker,
+        )
+
+        text = context.get("adapted_text") or context.get("draft_text", "")
+        task_brief = context.get("task_brief", {})
+        contract = context.get("context_contract", {})
+        mode = context.get("mode", "standard")
+
+        if mode == "minimal":
+            checkers = [
+                SettingConsistencyChecker(text, task_brief, contract),
+                CharacterOOCChecker(text, task_brief, contract),
+                NarrativeCoherenceChecker(text, task_brief, contract),
+            ]
+        else:
+            checkers = [
+                HookDensityChecker(text, task_brief, contract),
+                SettingConsistencyChecker(text, task_brief, contract),
+                RhythmRatioChecker(text, task_brief, contract),
+                CharacterOOCChecker(text, task_brief, contract),
+                NarrativeCoherenceChecker(text, task_brief, contract),
+                ReadabilityChecker(text, task_brief, contract),
+            ]
+
+        results = await asyncio.gather(
+            *[checker.check() for checker in checkers],
+            return_exceptions=True,
+        )
+
+        review_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                review_results.append({
+                    "dimension": checkers[i].dimension,
+                    "score": 0,
+                    "passed": False,
+                    "issues": [{"severity": "error", "message": str(result)}],
+                })
+            else:
+                review_results.append(result)
+
+        total_score = sum(r["score"] for r in review_results) / len(review_results) if review_results else 0
+
+        all_issues = []
+        for r in review_results:
+            for issue in r.get("issues", []):
+                issue["dimension"] = r["dimension"]
+                all_issues.append(issue)
+
+        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        all_issues.sort(key=lambda x: severity_order.get(x.get("severity", "low"), 4))
+
+        context["review_results"] = review_results
+        context["review_issues"] = all_issues
+        context["review_score"] = total_score
+
+        return {
+            "review_results": review_results,
+            "total_score": round(total_score, 1),
+            "issues_count": len(all_issues),
+            "critical_count": sum(1 for i in all_issues if i.get("severity") == "critical"),
+            "instruction": f"审查完成，总分 {total_score:.1f}/10，{len(all_issues)} 个问题",
         }
 
     async def validate_input(self, step: StepState, data: dict) -> str | None:

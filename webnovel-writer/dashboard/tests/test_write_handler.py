@@ -135,10 +135,18 @@ class TestExecuteStep:
         assert "instruction" in result
 
     @pytest.mark.asyncio
-    async def test_step_3_returns_review_placeholder(self, handler):
+    async def test_step_3_returns_review_result(self, handler):
         step = StepState(step_id="step_3", status="running")
-        result = await handler.execute_step(step, {})
-        assert result == {"message": "六维审查（待实现）"}
+        context = {
+            "draft_text": "「你好」测试文本。",
+            "task_brief": {},
+            "context_contract": {},
+            "mode": "standard",
+        }
+        result = await handler.execute_step(step, context)
+        assert "review_results" in result
+        assert "total_score" in result
+        assert len(result["review_results"]) == 6
 
     @pytest.mark.asyncio
     async def test_step_5_returns_data_agent_placeholder(self, handler):
