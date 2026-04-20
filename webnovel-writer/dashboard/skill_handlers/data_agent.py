@@ -1,6 +1,7 @@
 """DataAgent — 章节写作后的数据处理流水线。"""
 
 import json
+import os
 from pathlib import Path
 from ..script_adapter import ScriptAdapter
 
@@ -187,7 +188,9 @@ class DataAgent:
         )
 
         state_path.parent.mkdir(parents=True, exist_ok=True)
-        state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp_path = state_path.with_suffix(".json.tmp")
+        tmp_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp_path, state_path)
 
     async def _extract_style_sample(self, chapter_path: str) -> None:
         """提取风格样本（保留最近 3 章的样本）。"""
