@@ -10,7 +10,7 @@ import json
 import sqlite3
 from contextlib import asynccontextmanager, closing
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,25 +19,34 @@ from fastapi.staticfiles import StaticFiles
 
 from .path_guard import safe_resolve
 from .models import TASK_IDLE_PAYLOAD
+from .query_service import QueryService
 from .task_service import TaskService
 from .genre_service import list_genres, list_golden_finger_types
 from .project_service import create_project, list_projects, switch_project
 from .workbench_service import build_chat_response, build_outline_tree, load_project_summary, save_workspace_file
 from .watcher import FileWatcher
+from .skill_registry import default_registry
+from .skill_models import SkillInstance, StepState
+from .skill_runner import SkillRunner
 
 # ---------------------------------------------------------------------------
 # 全局状态
 # ---------------------------------------------------------------------------
-_project_root: Path | None = None
+_project_root: Optional[Path] = None
 _watcher = FileWatcher()
 _task_service = TaskService()
 _PACKAGE_ROOT = Path(__file__).resolve().parent.parent  # webnovel-writer/ 包根目录
 _recent_activities: list[dict] = []
 
+# Skill API 全局状态
+_active_skills: dict[str, SkillRunner] = {}
+_skill_subscribers: list[asyncio.Queue] = []
+
 STATIC_DIR = Path(__file__).parent / "frontend" / "dist"
 
 
 def _get_project_root() -> Path:
+    """Return the configured project root (module-level helper, also used by Skill API)."""
     if _project_root is None:
         raise HTTPException(status_code=500, detail="项目根目录未配置")
     return _project_root
@@ -48,10 +57,176 @@ def _webnovel_dir() -> Path:
 
 
 # ---------------------------------------------------------------------------
+# Skill SSE helpers
+# ---------------------------------------------------------------------------
+
+async def subscribe_skill_events() -> asyncio.Queue:
+    """Add an asyncio.Queue to the skill event subscriber list. Caller must call unsubscribe_skill_events on cleanup."""
+    q: asyncio.Queue = asyncio.Queue(maxsize=128)
+    _skill_subscribers.append(q)
+    return q
+
+
+def unsubscribe_skill_events(q: asyncio.Queue) -> None:
+    """Remove a previously subscribed queue."""
+    try:
+        _skill_subscribers.remove(q)
+    except ValueError:
+        pass
+
+
+def _build_skill_step_event(instance: SkillInstance, step: Optional[StepState]) -> str:
+    """Build a JSON string for a skill.step SSE event."""
+    step_dict = step.to_dict() if step else None
+    return json.dumps(
+        {
+            "type": "skill.step",
+            "skillId": instance.id,
+            "skillName": instance.skill_name,
+            "step": step_dict,
+        },
+        ensure_ascii=False,
+    )
+
+
+def _emit_skill_event(message: str) -> None:
+    """Dispatch a raw JSON message string to all skill subscribers."""
+    for q in _skill_subscribers[:]:
+        try:
+            q.put_nowait(message)
+        except asyncio.QueueFull:
+            _skill_subscribers.remove(q)
+
+
+async def push_skill_log(skill_id: str, message: str) -> None:
+    """Push a skill.log event to all subscribers. Thread-safe via call_soon_threadsafe."""
+    payload = json.dumps(
+        {"type": "skill.log", "skillId": skill_id, "message": message},
+        ensure_ascii=False,
+    )
+    loop = asyncio.get_running_loop()
+    loop.call_soon_threadsafe(lambda: _emit_skill_event(payload))
+
+
+def _make_skill_on_step_change(skill_id: str, skill_name: str) -> callable:
+    """Factory: return an on_step_change callback that emits skill events."""
+    def callback(instance: SkillInstance, step: Optional[StepState]) -> None:
+        if instance.is_terminal():
+            # Emit skill.completed / skill.failed
+            if instance.status == "failed":
+                err = None
+                for st in instance.step_states:
+                    if st.error:
+                        err = st.error
+                        break
+                payload = json.dumps(
+                    {
+                        "type": "skill.failed",
+                        "skillId": instance.id,
+                        "skillName": instance.skill_name,
+                        "error": err or "unknown error",
+                    },
+                    ensure_ascii=False,
+                )
+            else:
+                payload = json.dumps(
+                    {
+                        "type": "skill.completed",
+                        "skillId": instance.id,
+                        "skillName": instance.skill_name,
+                    },
+                    ensure_ascii=False,
+                )
+            loop = asyncio.get_running_loop()
+            loop.call_soon_threadsafe(lambda msg=payload: _emit_skill_event(msg))
+        else:
+            # Emit skill.step
+            msg = _build_skill_step_event(instance, step)
+            loop = asyncio.get_running_loop()
+            loop.call_soon_threadsafe(lambda m=msg: _emit_skill_event(m))
+
+    return callback
+
+
+# ---------------------------------------------------------------------------
+# Skill API 路由（模块级，便于测试直接调用）
+# ---------------------------------------------------------------------------
+
+async def start_skill(skill_name: str, payload: dict) -> dict:
+    """POST /api/skill/{skill_name}/start — 启动一个 Skill 实例。"""
+    mode = payload.get("mode")
+    context = payload.get("context", {})
+
+    try:
+        handler = default_registry.get_handler(skill_name)
+    except KeyError:
+        raise HTTPException(400, f"未注册的 skill: {skill_name}")
+
+    steps = handler.get_steps(mode=mode)
+    instance = SkillInstance(
+        id=f"{skill_name}-{len(_active_skills) + 1}",
+        skill_name=skill_name,
+        status="created",
+        project_root=str(_get_project_root()),
+        steps=steps,
+        step_states=[],
+        current_step_index=0,
+        mode=mode,
+        context=context,
+    )
+    for step_def in steps:
+        instance.step_states.append(StepState(step_id=step_def.id, status="pending"))
+    if instance.step_states:
+        instance.step_states[0].status = "waiting_input"
+
+    runner = SkillRunner(
+        instance,
+        handler,
+        on_step_change=_make_skill_on_step_change(instance.id, instance.skill_name),
+    )
+    _active_skills[instance.id] = runner
+    asyncio.create_task(runner.start())
+    return instance.to_dict()
+
+
+async def get_skill_status(skill_id: str) -> dict:
+    """GET /api/skill/{skill_id}/status — 返回 Skill 实例状态。"""
+    runner = _active_skills.get(skill_id)
+    if runner is None:
+        raise HTTPException(404, "Skill 实例不存在")
+    return runner.get_state()
+
+
+async def submit_skill_step(skill_id: str, payload: dict) -> dict:
+    """POST /api/skill/{skill_id}/step — 提交当前 step 的用户输入。"""
+    runner = _active_skills.get(skill_id)
+    if runner is None:
+        raise HTTPException(404, "Skill 实例不存在")
+    step_id = payload.get("step_id")
+    data = payload.get("data", {})
+    await runner.submit_input(step_id, data)
+    return runner.get_state()
+
+
+async def cancel_skill(skill_id: str) -> dict:
+    """POST /api/skill/{skill_id}/cancel — 取消 Skill 执行。"""
+    runner = _active_skills.get(skill_id)
+    if runner is None:
+        raise HTTPException(404, "Skill 实例不存在")
+    await runner.cancel()
+    return {"id": skill_id, "status": "cancelled"}
+
+
+async def list_active_skills() -> dict:
+    """GET /api/skill/active — 返回所有活跃 Skill 实例列表。"""
+    return {"instances": [r.get_state() for r in _active_skills.values()]}
+
+
+# ---------------------------------------------------------------------------
 # 应用工厂
 # ---------------------------------------------------------------------------
 
-def create_app(project_root: str | Path | None = None) -> FastAPI:
+def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
     global _project_root
 
     if project_root:
@@ -89,6 +264,13 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
         if not state_path.is_file():
             raise HTTPException(404, "state.json 不存在")
         return json.loads(state_path.read_text(encoding="utf-8"))
+
+    @app.get("/api/query/foreshadowing")
+    def api_query_foreshadowing(project_root: Optional[str] = None):
+        """伏笔查询：三层分类 + 紧急度计算。"""
+        root = Path(project_root) if project_root else _get_project_root()
+        service = QueryService(str(root))
+        return service.query_foreshadowing()
 
     @app.get("/api/workbench/summary")
     def workbench_summary():
@@ -512,22 +694,48 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
         return build_chat_response(message, context)
 
     # ===========================================================
+    # Skill API — SkillRunner 生命周期管理（委托至模块级函数）
+    # ===========================================================
+
+    @app.post("/api/skill/{skill_name}/start")
+    async def _start_skill(skill_name: str, payload: dict):
+        return await start_skill(skill_name, payload)
+
+    @app.get("/api/skill/{skill_id}/status")
+    async def _get_skill_status(skill_id: str):
+        return await get_skill_status(skill_id)
+
+    @app.post("/api/skill/{skill_id}/step")
+    async def _submit_skill_step(skill_id: str, payload: dict):
+        return await submit_skill_step(skill_id, payload)
+
+    @app.post("/api/skill/{skill_id}/cancel")
+    async def _cancel_skill(skill_id: str):
+        return await cancel_skill(skill_id)
+
+    @app.get("/api/skill/active")
+    async def _list_active_skills():
+        return await list_active_skills()
+
+    # ===========================================================
     # SSE：实时变更推送
     # ===========================================================
 
     @app.get("/api/events")
     async def sse():
-        """Server-Sent Events 端点，推送文件变更与任务状态。"""
+        """Server-Sent Events 端点，推送文件变更、任务状态和 Skill 步骤状态。"""
         file_q = _watcher.subscribe()
         task_q = _task_service.subscribe_events()
+        skill_q = subscribe_skill_events()
 
         async def _gen():
             try:
                 while True:
                     file_get = asyncio.create_task(file_q.get())
                     task_get = asyncio.create_task(task_q.get())
+                    skill_get = asyncio.create_task(skill_q.get())
                     done, pending = await asyncio.wait(
-                        {file_get, task_get},
+                        {file_get, task_get, skill_get},
                         return_when=asyncio.FIRST_COMPLETED,
                     )
                     for waiter in pending:
@@ -540,6 +748,7 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
             finally:
                 _watcher.unsubscribe(file_q)
                 _task_service.unsubscribe_events(task_q)
+                unsubscribe_skill_events(skill_q)
 
         return StreamingResponse(_gen(), media_type="text/event-stream")
 
