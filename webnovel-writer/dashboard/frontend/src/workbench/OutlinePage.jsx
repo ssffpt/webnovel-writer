@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchOutlineTree, readFile, saveFile } from '../api.js'
+import PlanFlow from './PlanFlow.jsx'
 
 const FIXED_NODES = [
   { key: 'master', label: '总纲', path: '大纲/总纲.md' },
@@ -25,6 +26,7 @@ export default function OutlinePage({
   cachedSelectedPath = null,
   reloadToken = 0,
   onRunAction,
+  summary,
 }) {
   const [treeLoading, setTreeLoading] = useState(true)
   const [treeError, setTreeError] = useState('')
@@ -35,6 +37,9 @@ export default function OutlinePage({
   const [saveState, setSaveState] = useState('idle')
   const [contentError, setContentError] = useState('')
   const [pendingSwitchPath, setPendingSwitchPath] = useState(null)
+  const [showPlanFlow, setShowPlanFlow] = useState(false)
+
+  const projectRoot = useMemo(() => summary?.project?.path ?? '', [summary])
 
   // Load outline tree
   useEffect(() => {
@@ -174,6 +179,18 @@ export default function OutlinePage({
     )
   }
 
+  if (showPlanFlow) {
+    return (
+      <section className="workbench-page outline-page-shell">
+        <PlanFlow
+          projectRoot={projectRoot}
+          onCompleted={() => setShowPlanFlow(false)}
+          onCancelled={() => setShowPlanFlow(false)}
+        />
+      </section>
+    )
+  }
+
   return (
     <section className="workbench-page outline-page-shell">
       <div className="outline-workspace">
@@ -249,8 +266,12 @@ export default function OutlinePage({
           </div>
 
           <div className="chapter-placeholder-actions">
-            <button type="button" className="workbench-nav-button disabled-action-btn" disabled title="即将支持">
-              生成卷纲 🔒
+            <button
+              type="button"
+              className="workbench-nav-button"
+              onClick={() => setShowPlanFlow(true)}
+            >
+              生成卷纲
             </button>
             <button type="button" className="workbench-nav-button disabled-action-btn" disabled title="即将支持">
               生成章纲 🔒
