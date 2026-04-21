@@ -278,6 +278,7 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
   }))
   const [confirming, setConfirming] = useState(false)
   const pollIntervalRef = useRef(null)
+  const notifiedRef = useRef(false) // prevent duplicate onCompleted/onCancelled
 
   // Build the current step object from the unified steps list + SSE update
   function buildCurrentStep(steps, eventStep) {
@@ -386,6 +387,21 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
       try {
         const data = await getSkillStatus(skillId)
         const s = data.skill ?? data
+        const mergedSteps = mergeStepsAndStates(s.steps ?? [], s.step_states ?? [])
+        const current = mergedSteps.find(
+          step => step.status === 'running' || step.status === 'waiting_input'
+        ) || null
+        setState(prev => ({
+          ...prev,
+          status: s.status === 'completed' ? 'completed'
+            : s.status === 'failed' ? 'failed'
+            : s.status === 'cancelled' ? 'cancelled'
+            : prev.status,
+          steps: mergedSteps,
+          currentStep: current,
+          result: s.result ?? prev.result,
+          error: s.error ?? prev.error,
+        }))
         if (s.status === 'completed' || s.status === 'failed' || s.status === 'cancelled') {
           clearInterval(pollIntervalRef.current)
         }
@@ -410,10 +426,13 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
 
   // Notify parent on terminal states, passing final state for onCompleted
   useEffect(() => {
+    if (notifiedRef.current) return
     if (state.status === 'completed' && onCompleted) {
+      notifiedRef.current = true
       onCompleted(state.result ? { result: state.result, steps: state.steps } : undefined)
     }
     if (state.status === 'cancelled' && onCancelled) {
+      notifiedRef.current = true
       onCancelled()
     }
   }, [state.status, onCompleted, onCancelled])

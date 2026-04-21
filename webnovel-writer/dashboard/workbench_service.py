@@ -256,15 +256,16 @@ def build_outline_tree(project_root: Path) -> dict[str, Any]:
             outline_path = f"大纲/第{v}卷-详细大纲.md"
         else:
             # Look for a matching subdirectory (e.g. "第一卷")
+            vol_pattern = re.compile(rf"第{v}卷\b")
             for d_name in dir_volume_names:
-                if f"第{v}卷" in d_name:
+                if vol_pattern.search(d_name):
                     has_outline = True
                     outline_path = f"大纲/{d_name}"
                     break
             # Also check state.json volumes
             if not has_outline:
                 for vol_name, vol_info in state_volumes.items():
-                    if f"第{v}卷" in vol_name and vol_info.get("status") == "planned":
+                    if vol_pattern.search(vol_name) and vol_info.get("status") == "planned":
                         has_outline = True
                         outline_path = f"大纲/{vol_name}"
                         break
@@ -286,13 +287,16 @@ def build_outline_tree(project_root: Path) -> dict[str, Any]:
 def _scan_outline_subdir(volume_dir: Path, project_root: Path) -> list[dict]:
     """Scan a volume subdirectory for .json and .md files."""
     children = []
-    for f in sorted(volume_dir.iterdir()):
-        if f.is_file() and f.suffix in (".md", ".json"):
-            rel = f"大纲/{volume_dir.name}/{f.name}"
-            children.append({
-                "name": f.name,
-                "path": rel,
-                "type": "file",
-                "size": f.stat().st_size,
-            })
+    try:
+        for f in sorted(volume_dir.iterdir()):
+            if f.is_file() and f.suffix in (".md", ".json"):
+                rel = f"大纲/{volume_dir.name}/{f.name}"
+                children.append({
+                    "name": f.name,
+                    "path": rel,
+                    "type": "file",
+                    "size": f.stat().st_size,
+                })
+    except OSError:
+        pass
     return children

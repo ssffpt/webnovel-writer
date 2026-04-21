@@ -780,14 +780,49 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
     @app.post("/api/rag/test")
     def test_rag_connection():
         """测试 RAG embedding API 连接。"""
+        import json as _json
+        import urllib.request
+        import urllib.error
+
         config = RAGConfig(str(_get_project_root()))
         api_key = config.get_openai_key()
         if not api_key:
             return {"success": False, "message": "API Key 未配置"}
         model = config.get_embedding_model()
         base_url = config.get("RAG_EMBEDDING_BASE_URL", "https://api.openai.com/v1")
-        # Basic reachability check: key is present and non-empty
-        return {"success": True, "message": f"配置有效（模型: {model}）"}
+
+        # 实际调用 embedding API 做轻量级连接测试
+        try:
+            url = f"{base_url.rstrip('/')}/embeddings"
+            payload = _json.dumps({
+                "input": "test",
+                "model": model,
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                _json.loads(resp.read().decode("utf-8"))
+            return {"success": True, "message": f"连接成功（模型: {model}）"}
+        except urllib.error.HTTPError as e:
+            body = ""
+            try:
+                body = e.read().decode("utf-8", errors="replace")
+            except Exception:
+                pass
+            if e.code == 401:
+                return {"success": False, "message": "API Key 无效或已过期"}
+            return {"success": False, "message": f"API 返回错误 {e.code}: {body[:200]}"}
+        except urllib.error.URLError as e:
+            return {"success": False, "message": f"无法连接到 {base_url}: {e.reason}"}
+        except Exception as e:
+            return {"success": False, "message": f"测试失败: {str(e)}"}
 
     # --- RAG 索引构建 API (Task 603) ---
 
