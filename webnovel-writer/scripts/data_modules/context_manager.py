@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 
 from runtime_compat import enable_windows_utf8_stdio
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     from chapter_outline_loader import load_chapter_outline
@@ -74,13 +74,13 @@ class ContextManager:
     ]
     SUMMARY_SECTION_RE = re.compile(r"##\s*剧情摘要\s*\r?\n(.*?)(?=\r?\n##|\Z)", re.DOTALL)
 
-    def __init__(self, config=None, snapshot_manager: Optional[SnapshotManager] = None):
+    def __init__(self, config=None, snapshot_manager: SnapshotManager | None = None):
         self.config = config or get_config()
         self.snapshot_manager = snapshot_manager or SnapshotManager(self.config)
         self.index_manager = IndexManager(self.config)
         self.context_ranker = ContextRanker(self.config)
 
-    def _is_snapshot_compatible(self, cached: Dict[str, Any], template: str) -> bool:
+    def _is_snapshot_compatible(self, cached: dict[str, Any], template: str) -> bool:
         """判断快照是否可用于当前模板。"""
         if not isinstance(cached, dict):
             return False
@@ -102,8 +102,8 @@ class ContextManager:
         template: str | None = None,
         use_snapshot: bool = True,
         save_snapshot: bool = True,
-        max_chars: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_chars: int | None = None,
+    ) -> dict[str, Any]:
         template = template or self.DEFAULT_TEMPLATE
         self._active_template = template
         if template not in self.TEMPLATE_WEIGHTS:
@@ -132,10 +132,10 @@ class ContextManager:
 
     def assemble_context(
         self,
-        pack: Dict[str, Any],
+        pack: dict[str, Any],
         template: str = DEFAULT_TEMPLATE,
-        max_chars: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_chars: int | None = None,
+    ) -> dict[str, Any]:
         chapter = int((pack.get("meta") or {}).get("chapter") or 0)
         weights = self._resolve_template_weights(template=template, chapter=chapter)
         max_chars = max_chars or 8000
@@ -146,7 +146,7 @@ class ContextManager:
             if section_name in pack:
                 sections[section_name] = pack[section_name]
 
-        assembled: Dict[str, Any] = {"meta": pack.get("meta", {}), "sections": {}}
+        assembled: dict[str, Any] = {"meta": pack.get("meta", {}), "sections": {}}
         for name, content in sections.items():
             weight = weights.get(name, 0.0)
             if weight > 0:
@@ -164,7 +164,7 @@ class ContextManager:
             assembled.setdefault("meta", {})["context_weight_stage"] = self._resolve_context_stage(chapter)
         return assembled
 
-    def filter_invalid_items(self, items: List[Dict[str, Any]], source_type: str, id_key: str) -> List[Dict[str, Any]]:
+    def filter_invalid_items(self, items: list[dict[str, Any]], source_type: str, id_key: str) -> list[dict[str, Any]]:
         confirmed = self.index_manager.get_invalid_ids(source_type, status="confirmed")
         pending = self.index_manager.get_invalid_ids(source_type, status="pending")
         result = []
@@ -178,15 +178,15 @@ class ContextManager:
             result.append(item)
         return result
 
-    def apply_confidence_filter(self, items: List[Dict[str, Any]], min_confidence: float) -> List[Dict[str, Any]]:
-        filtered: List[Dict[str, Any]] = []
+    def apply_confidence_filter(self, items: list[dict[str, Any]], min_confidence: float) -> list[dict[str, Any]]:
+        filtered: list[dict[str, Any]] = []
         for item in items:
             conf = item.get("confidence")
             if conf is None or conf >= min_confidence:
                 filtered.append(item)
         return filtered
 
-    def _build_pack(self, chapter: int) -> Dict[str, Any]:
+    def _build_pack(self, chapter: int) -> dict[str, Any]:
         state = self._load_state()
         core = {
             "chapter_outline": self._load_outline(chapter),
@@ -247,7 +247,7 @@ class ContextManager:
             },
         }
 
-    def _load_reader_signal(self, chapter: int) -> Dict[str, Any]:
+    def _load_reader_signal(self, chapter: int) -> dict[str, Any]:
         if not getattr(self.config, "context_reader_signal_enabled", True):
             return {}
 
@@ -261,7 +261,7 @@ class ContextManager:
         hook_stats = self.index_manager.get_hook_type_stats(last_n_chapters=pattern_window)
         review_trend = self.index_manager.get_review_trend_stats(last_n=review_window)
 
-        low_score_ranges: List[Dict[str, Any]] = []
+        low_score_ranges: list[dict[str, Any]] = []
         for row in review_trend.get("recent_ranges", []):
             score = row.get("overall_score")
             if isinstance(score, (int, float)) and float(score) < 75:
@@ -273,7 +273,7 @@ class ContextManager:
                     }
                 )
 
-        signal: Dict[str, Any] = {
+        signal: dict[str, Any] = {
             "recent_reading_power": recent_power,
             "pattern_usage": pattern_stats,
             "hook_type_usage": hook_stats,
@@ -287,7 +287,7 @@ class ContextManager:
 
         return signal
 
-    def _load_genre_profile(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    def _load_genre_profile(self, state: dict[str, Any]) -> dict[str, Any]:
         if not getattr(self.config, "context_genre_profile_enabled", True):
             return {}
 
@@ -313,8 +313,8 @@ class ContextManager:
         profile_excerpt = self._extract_genre_section(profile_text, primary_genre)
         taxonomy_excerpt = self._extract_genre_section(taxonomy_text, primary_genre)
 
-        secondary_profiles: List[str] = []
-        secondary_taxonomies: List[str] = []
+        secondary_profiles: list[str] = []
+        secondary_taxonomies: list[str] = []
         for extra in secondary_genres:
             secondary_profiles.append(self._extract_genre_section(profile_text, extra))
             secondary_taxonomies.append(self._extract_genre_section(taxonomy_text, extra))
@@ -343,9 +343,9 @@ class ContextManager:
     def _build_writing_guidance(
         self,
         chapter: int,
-        reader_signal: Dict[str, Any],
-        genre_profile: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        reader_signal: dict[str, Any],
+        genre_profile: dict[str, Any],
+    ) -> dict[str, Any]:
         if not getattr(self.config, "context_writing_guidance_enabled", True):
             return {}
 
@@ -365,7 +365,7 @@ class ContextManager:
         )
 
         guidance = list(guidance_bundle.get("guidance") or [])
-        methodology_strategy: Dict[str, Any] = {}
+        methodology_strategy: dict[str, Any] = {}
 
         if self._is_methodology_enabled_for_genre(genre_profile):
             methodology_strategy = build_methodology_strategy_card(
@@ -423,16 +423,16 @@ class ContextManager:
     def _compute_writing_checklist_score(
         self,
         chapter: int,
-        checklist: List[Dict[str, Any]],
-        reader_signal: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        checklist: list[dict[str, Any]],
+        reader_signal: dict[str, Any],
+    ) -> dict[str, Any]:
         total_items = len(checklist)
         required_items = 0
         completed_items = 0
         completed_required = 0
         total_weight = 0.0
         completed_weight = 0.0
-        pending_labels: List[str] = []
+        pending_labels: list[str] = []
 
         for item in checklist:
             if not isinstance(item, dict):
@@ -483,10 +483,10 @@ class ContextManager:
             "trend_window": int(getattr(self.config, "context_writing_score_trend_window", 10)),
         }
 
-    def _is_checklist_item_completed(self, item: Dict[str, Any], reader_signal: Dict[str, Any]) -> bool:
+    def _is_checklist_item_completed(self, item: dict[str, Any], reader_signal: dict[str, Any]) -> bool:
         return is_checklist_item_completed(item, reader_signal)
 
-    def _persist_writing_checklist_score(self, checklist_score: Dict[str, Any]) -> None:
+    def _persist_writing_checklist_score(self, checklist_score: dict[str, Any]) -> None:
         if not checklist_score:
             return
         try:
@@ -523,7 +523,7 @@ class ContextManager:
             return "late"
         return "mid"
 
-    def _resolve_template_weights(self, template: str, chapter: int) -> Dict[str, float]:
+    def _resolve_template_weights(self, template: str, chapter: int) -> dict[str, float]:
         template_key = template if template in self.TEMPLATE_WEIGHTS else self.DEFAULT_TEMPLATE
         base = dict(self.TEMPLATE_WEIGHTS.get(template_key, self.TEMPLATE_WEIGHTS[self.DEFAULT_TEMPLATE]))
         if not getattr(self.config, "context_dynamic_budget_enabled", True):
@@ -541,7 +541,7 @@ class ContextManager:
 
         return base
 
-    def _parse_genre_tokens(self, genre_raw: str) -> List[str]:
+    def _parse_genre_tokens(self, genre_raw: str) -> list[str]:
         support_composite = bool(getattr(self.config, "context_genre_profile_support_composite", True))
         separators_raw = getattr(self.config, "context_genre_profile_separators", ("+", "/", "|", ","))
         separators = tuple(str(token) for token in separators_raw if str(token))
@@ -554,17 +554,17 @@ class ContextManager:
     def _normalize_genre_token(self, token: str) -> str:
         return normalize_genre_token(token)
 
-    def _build_composite_genre_hints(self, genres: List[str], refs: List[str]) -> List[str]:
+    def _build_composite_genre_hints(self, genres: list[str], refs: list[str]) -> list[str]:
         return build_composite_genre_hints(genres, refs)
 
     def _build_writing_checklist(
         self,
         chapter: int,
-        guidance_items: List[str],
-        reader_signal: Dict[str, Any],
-        genre_profile: Dict[str, Any],
-        strategy_card: Dict[str, Any] | None = None,
-    ) -> List[Dict[str, Any]]:
+        guidance_items: list[str],
+        reader_signal: dict[str, Any],
+        genre_profile: dict[str, Any],
+        strategy_card: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         _ = chapter
         if not getattr(self.config, "context_writing_checklist_enabled", True):
             return []
@@ -585,7 +585,7 @@ class ContextManager:
             default_weight=default_weight,
         )
 
-    def _is_methodology_enabled_for_genre(self, genre_profile: Dict[str, Any]) -> bool:
+    def _is_methodology_enabled_for_genre(self, genre_profile: dict[str, Any]) -> bool:
         if not bool(getattr(self.config, "context_methodology_enabled", False)):
             return False
 
@@ -608,7 +608,7 @@ class ContextManager:
         profile_key = to_profile_key(genre)
         return profile_key in whitelist
 
-    def _compact_json_text(self, content: Any, budget: Optional[int]) -> str:
+    def _compact_json_text(self, content: Any, budget: int | None) -> str:
         raw = json.dumps(content, ensure_ascii=False)
         if budget is None or len(raw) <= budget:
             return raw
@@ -628,10 +628,10 @@ class ContextManager:
     def _extract_genre_section(self, text: str, genre: str) -> str:
         return extract_genre_section(text, genre)
 
-    def _extract_markdown_refs(self, text: str, max_items: int = 8) -> List[str]:
+    def _extract_markdown_refs(self, text: str, max_items: int = 8) -> list[str]:
         return extract_markdown_refs(text, max_items=max_items)
 
-    def _load_state(self) -> Dict[str, Any]:
+    def _load_state(self) -> dict[str, Any]:
         path = self.config.state_file
         if not path.exists():
             return {}
@@ -640,7 +640,7 @@ class ContextManager:
     def _load_outline(self, chapter: int) -> str:
         return load_chapter_outline(self.config.project_root, chapter, max_chars=1500)
 
-    def _load_recent_summaries(self, chapter: int, window: int = 3) -> List[Dict[str, Any]]:
+    def _load_recent_summaries(self, chapter: int, window: int = 3) -> list[dict[str, Any]]:
         summaries = []
         for ch in range(max(1, chapter - window), chapter):
             summary = self._load_summary_text(ch)
@@ -648,7 +648,7 @@ class ContextManager:
                 summaries.append(summary)
         return summaries
 
-    def _load_recent_meta(self, state: Dict[str, Any], chapter: int, window: int = 3) -> List[Dict[str, Any]]:
+    def _load_recent_meta(self, state: dict[str, Any], chapter: int, window: int = 3) -> list[dict[str, Any]]:
         meta = state.get("chapter_meta", {}) or {}
         results = []
         for ch in range(max(1, chapter - window), chapter):
@@ -658,7 +658,7 @@ class ContextManager:
                     break
         return results
 
-    def _load_recent_appearances(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    def _load_recent_appearances(self, limit: int | None = None) -> list[dict[str, Any]]:
         appearances = self.index_manager.get_recent_appearances(limit=limit)
         return appearances or []
 
@@ -685,7 +685,7 @@ class ContextManager:
             return excerpt[:max_chars].rstrip()
         return excerpt
 
-    def _load_summary_text(self, chapter: int, snippet_chars: Optional[int] = None) -> Optional[Dict[str, Any]]:
+    def _load_summary_text(self, chapter: int, snippet_chars: int | None = None) -> dict[str, Any] | None:
         summary_path = self.config.webnovel_dir / "summaries" / f"ch{chapter:04d}.md"
         if not summary_path.exists():
             return None
@@ -696,7 +696,7 @@ class ContextManager:
             summary_text = text
         return {"chapter": chapter, "summary": summary_text}
 
-    def _load_story_skeleton(self, chapter: int) -> List[Dict[str, Any]]:
+    def _load_story_skeleton(self, chapter: int) -> list[dict[str, Any]]:
         interval = max(1, int(self.config.context_story_skeleton_interval))
         max_samples = max(0, int(self.config.context_story_skeleton_max_samples))
         snippet_chars = int(self.config.context_story_skeleton_snippet_chars)
@@ -704,7 +704,7 @@ class ContextManager:
         if max_samples <= 0 or chapter <= interval:
             return []
 
-        samples: List[Dict[str, Any]] = []
+        samples: list[dict[str, Any]] = []
         cursor = chapter - interval
         while cursor >= 1 and len(samples) < max_samples:
             summary = self._load_summary_text(cursor, snippet_chars=snippet_chars)
@@ -715,7 +715,7 @@ class ContextManager:
         samples.reverse()
         return samples
 
-    def _load_json_optional(self, path: Path) -> Dict[str, Any]:
+    def _load_json_optional(self, path: Path) -> dict[str, Any]:
         if not path.exists():
             return {}
         try:

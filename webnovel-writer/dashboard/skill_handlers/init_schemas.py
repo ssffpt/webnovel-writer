@@ -7,8 +7,10 @@ INIT_STEP_SCHEMAS = {
         "fields": [
             {"name": "title", "label": "书名", "type": "text", "required": True},
             {"name": "genres", "label": "题材", "type": "multi_select", "required": True,
-             "hint": "支持复合题材，至少选一个"},
-            {"name": "target_words", "label": "目标字数", "type": "number", "default": 2000000},
+             "hint": "支持复合题材，至少选一个",
+             "options": ["修仙", "玄幻", "都市", "科幻", "悬疑", "狗血言情", "古言", "现实题材", "规则怪谈", "知乎短篇", "历史", "游戏", "末世", "校园"]},
+            {"name": "target_words", "label": "目标字数（万字）", "type": "number", "default": 200,
+             "hint": "如 200 表示 200 万字"},
             {"name": "target_chapters", "label": "目标章节数", "type": "number", "default": 600},
             {"name": "one_line_story", "label": "一句话故事", "type": "text", "required": True,
              "hint": "用一句话概括你的故事核心"},

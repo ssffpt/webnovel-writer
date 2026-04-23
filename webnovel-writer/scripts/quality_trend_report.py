@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from runtime_compat import enable_windows_utf8_stdio
 
@@ -48,11 +48,11 @@ def _percent(value: float) -> str:
     return f"{value * 100:.1f}%"
 
 
-def _build_review_rows(records: List[Dict[str, Any]]) -> List[str]:
+def _build_review_rows(records: list[dict[str, Any]]) -> list[str]:
     if not records:
         return ["| - | - | - | - | - | - |", "| - | - | - | - | - | - |"]
 
-    rows: List[str] = []
+    rows: list[str] = []
     sorted_records = sorted(
         records,
         key=lambda x: (_to_int(x.get("end_chapter")), _to_int(x.get("start_chapter"))),
@@ -71,11 +71,11 @@ def _build_review_rows(records: List[Dict[str, Any]]) -> List[str]:
     return rows
 
 
-def _build_checklist_rows(records: List[Dict[str, Any]]) -> List[str]:
+def _build_checklist_rows(records: list[dict[str, Any]]) -> list[str]:
     if not records:
         return ["| - | - | - | - |"]
 
-    rows: List[str] = []
+    rows: list[str] = []
     sorted_records = sorted(records, key=lambda x: _to_int(x.get("chapter")))
     for row in sorted_records:
         chapter = _to_int(row.get("chapter"))
@@ -94,10 +94,10 @@ def _build_checklist_rows(records: List[Dict[str, Any]]) -> List[str]:
 
 
 def _build_risk_flags(
-    review_trend: Dict[str, Any],
-    checklist_trend: Dict[str, Any],
-) -> List[str]:
-    flags: List[str] = []
+    review_trend: dict[str, Any],
+    checklist_trend: dict[str, Any],
+) -> list[str]:
+    flags: list[str] = []
 
     overall_avg = _to_float(review_trend.get("overall_avg"))
     if overall_avg < 75 and review_trend.get("count", 0) > 0:
@@ -147,7 +147,7 @@ def build_quality_report(
     severity_totals = review_trend.get("severity_totals") or {}
     risk_flags = _build_risk_flags(review_trend, checklist_trend)
 
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append("# 质量趋势报告")
     lines.append("")
     lines.append(f"- 生成时间: {now_text}")

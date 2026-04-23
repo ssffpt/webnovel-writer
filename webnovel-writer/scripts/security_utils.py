@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 from runtime_compat import enable_windows_utf8_stdio
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 # 尝试导入 filelock（可选依赖）
 try:
@@ -228,7 +228,7 @@ def validate_integer_input(value: str, field_name: str) -> int:
 # ============================================================================
 
 # 缓存 Git 可用性检测结果
-_git_available: Optional[bool] = None
+_git_available: bool | None = None
 
 
 def is_git_available() -> bool:
@@ -263,7 +263,7 @@ def is_git_available() -> bool:
     return _git_available
 
 
-def is_git_repo(path: Union[str, Path]) -> bool:
+def is_git_repo(path: str | Path) -> bool:
     """
     检测指定目录是否是 Git 仓库
 
@@ -283,7 +283,7 @@ def is_git_repo(path: Union[str, Path]) -> bool:
 
 def git_graceful_operation(
     args: list,
-    cwd: Union[str, Path],
+    cwd: str | Path,
     *,
     fallback_msg: str = "Git 不可用，跳过版本控制操作"
 ) -> tuple:
@@ -343,8 +343,8 @@ class AtomicWriteError(Exception):
 
 
 def atomic_write_json(
-    file_path: Union[str, Path],
-    data: Dict[str, Any],
+    file_path: str | Path,
+    data: dict[str, Any],
     *,
     use_lock: bool = True,
     backup: bool = True,
@@ -444,9 +444,9 @@ def atomic_write_json(
 
 
 def read_json_safe(
-    file_path: Union[str, Path],
-    default: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    file_path: str | Path,
+    default: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """
     安全读取 JSON 文件（带默认值和错误处理）
 
@@ -475,7 +475,7 @@ def read_json_safe(
         return default
 
 
-def restore_from_backup(file_path: Union[str, Path]) -> bool:
+def restore_from_backup(file_path: str | Path) -> bool:
     """
     从备份恢复文件
 

@@ -16,7 +16,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 from runtime_compat import normalize_windows_path
 
@@ -34,7 +34,7 @@ ENV_CLAUDE_HOME = "CLAUDE_HOME"
 ENV_WEBNOVEL_CLAUDE_HOME = "WEBNOVEL_CLAUDE_HOME"
 
 
-def _find_git_root(cwd: Path) -> Optional[Path]:
+def _find_git_root(cwd: Path) -> Path | None:
     """Return nearest git root for cwd, if any."""
     for candidate in (cwd, *cwd.parents):
         if (candidate / ".git").exists():
@@ -118,9 +118,9 @@ def _save_global_registry(path: Path, data: dict) -> None:
 def _resolve_project_root_from_global_registry(
     base: Path,
     *,
-    workspace_hint: Optional[Path] = None,
+    workspace_hint: Path | None = None,
     allow_last_used_fallback: bool = False,
-) -> Optional[Path]:
+) -> Path | None:
     """
     从用户级 registry 中解析 project_root。
 
@@ -158,7 +158,7 @@ def _resolve_project_root_from_global_registry(
     # 2) 前缀匹配（从 workspace 子目录运行时）
     for hint in hints:
         hint_key = _normcase_path_key(hint)
-        best_key: Optional[str] = None
+        best_key: str | None = None
         best_len = -1
         for ws_key in workspaces.keys():
             if not isinstance(ws_key, str) or not ws_key:
@@ -190,9 +190,9 @@ def _resolve_project_root_from_global_registry(
 
 def update_global_registry_current_project(
     *,
-    workspace_root: Optional[Path],
+    workspace_root: Path | None,
     project_root: Path,
-) -> Optional[Path]:
+) -> Path | None:
     """
     更新用户级 registry：workspace -> current_project_root 映射。
 
@@ -236,7 +236,7 @@ def update_global_registry_current_project(
     return reg_path
 
 
-def _candidate_roots(cwd: Path, *, stop_at: Optional[Path] = None) -> Iterable[Path]:
+def _candidate_roots(cwd: Path, *, stop_at: Path | None = None) -> Iterable[Path]:
     yield cwd
     for name in DEFAULT_PROJECT_DIR_NAMES:
         yield cwd / name
@@ -253,7 +253,7 @@ def _is_project_root(path: Path) -> bool:
     return (path / ".webnovel" / "state.json").is_file()
 
 
-def _pointer_candidates(cwd: Path, *, stop_at: Optional[Path] = None) -> Iterable[Path]:
+def _pointer_candidates(cwd: Path, *, stop_at: Path | None = None) -> Iterable[Path]:
     """Yield candidate pointer files from cwd up to parents (bounded by stop_at when provided)."""
     for candidate in (cwd, *cwd.parents):
         yield candidate / CURRENT_PROJECT_POINTER_REL
@@ -261,7 +261,7 @@ def _pointer_candidates(cwd: Path, *, stop_at: Optional[Path] = None) -> Iterabl
             break
 
 
-def _resolve_project_root_from_pointer(cwd: Path, *, stop_at: Optional[Path] = None) -> Optional[Path]:
+def _resolve_project_root_from_pointer(cwd: Path, *, stop_at: Path | None = None) -> Path | None:
     """
     Resolve project root from workspace pointer file.
 
@@ -283,7 +283,7 @@ def _resolve_project_root_from_pointer(cwd: Path, *, stop_at: Optional[Path] = N
     return None
 
 
-def _find_workspace_root_with_claude(start: Path) -> Optional[Path]:
+def _find_workspace_root_with_claude(start: Path) -> Path | None:
     """Find nearest ancestor containing `.claude/`."""
     for candidate in (start, *start.parents):
         if (candidate / ".claude").is_dir():
@@ -291,7 +291,7 @@ def _find_workspace_root_with_claude(start: Path) -> Optional[Path]:
     return None
 
 
-def write_current_project_pointer(project_root: Path, *, workspace_root: Optional[Path] = None) -> Optional[Path]:
+def write_current_project_pointer(project_root: Path, *, workspace_root: Path | None = None) -> Path | None:
     """
     Write workspace-level current project pointer and return pointer file path.
 
@@ -311,7 +311,7 @@ def write_current_project_pointer(project_root: Path, *, workspace_root: Optiona
     # 注意：ws_root 可能为 None（例如全局安装的 skills/agents，工作区内没有 `.claude/`）。
     # 这类情况仍然需要写入用户级 registry，以支持后续“空上下文”定位。
 
-    pointer_file: Optional[Path] = None
+    pointer_file: Path | None = None
     if ws_root is not None:
         # 仅当工作区内已经存在 `.claude/` 时才写入指针，避免在任意目录下“凭空创建 .claude/”。
         if (ws_root / ".claude").is_dir():
@@ -330,7 +330,7 @@ def write_current_project_pointer(project_root: Path, *, workspace_root: Optiona
     return pointer_file
 
 
-def resolve_project_root(explicit_project_root: Optional[str] = None, *, cwd: Optional[Path] = None) -> Path:
+def resolve_project_root(explicit_project_root: str | None = None, *, cwd: Path | None = None) -> Path:
     """
     Resolve the webnovel project root directory (the directory containing `.webnovel/state.json`).
 
@@ -408,10 +408,10 @@ def resolve_project_root(explicit_project_root: Optional[str] = None, *, cwd: Op
 
 
 def resolve_state_file(
-    explicit_state_file: Optional[str] = None,
+    explicit_state_file: str | None = None,
     *,
-    explicit_project_root: Optional[str] = None,
-    cwd: Optional[Path] = None,
+    explicit_project_root: str | None = None,
+    cwd: Path | None = None,
 ) -> Path:
     """
     Resolve `.webnovel/state.json` path.

@@ -18,7 +18,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from chapter_outline_loader import load_chapter_outline
 
@@ -114,7 +114,7 @@ def extract_state_summary(project_root: Path) -> str:
         return "⚠️ state.json 不存在"
 
     state = json.loads(state_file.read_text(encoding="utf-8"))
-    summary_parts: List[str] = []
+    summary_parts: list[str] = []
 
     if "progress" in state:
         progress = state["progress"]
@@ -136,7 +136,7 @@ def extract_state_summary(project_root: Path) -> str:
         tracker = state["strand_tracker"]
         history = tracker.get("history", [])[-5:]
         if history:
-            items: List[str] = []
+            items: list[str] = []
             for row in history:
                 if not isinstance(row, dict):
                     continue
@@ -196,7 +196,7 @@ def _search_with_rag(
     chapter_num: int,
     query: str,
     top_k: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     _ensure_scripts_path()
     from data_modules.config import DataModulesConfig
     from data_modules.rag_adapter import RAGAdapter
@@ -230,7 +230,7 @@ def _search_with_rag(
         fallback_reason = "missing_embed_api_key"
         results = adapter.bm25_search(query=query, top_k=top_k, chapter=chapter_num)
 
-    hits: List[Dict[str, Any]] = []
+    hits: list[dict[str, Any]] = []
     for row in results:
         content = re.sub(r"\s+", " ", str(getattr(row, "content", "") or "")).strip()
         hits.append(
@@ -257,7 +257,7 @@ def _search_with_rag(
     }
 
 
-def _load_rag_assist(project_root: Path, chapter_num: int, outline: str) -> Dict[str, Any]:
+def _load_rag_assist(project_root: Path, chapter_num: int, outline: str) -> dict[str, Any]:
     _ensure_scripts_path()
     from data_modules.config import DataModulesConfig
 
@@ -291,7 +291,7 @@ def _load_rag_assist(project_root: Path, chapter_num: int, outline: str) -> Dict
         return base_payload
 
 
-def _load_contract_context(project_root: Path, chapter_num: int) -> Dict[str, Any]:
+def _load_contract_context(project_root: Path, chapter_num: int) -> dict[str, Any]:
     """Build context via ContextManager and return selected sections."""
     _ensure_scripts_path()
     from data_modules.config import DataModulesConfig
@@ -317,7 +317,7 @@ def _load_contract_context(project_root: Path, chapter_num: int) -> Dict[str, An
     }
 
 
-def build_chapter_context_payload(project_root: Path, chapter_num: int) -> Dict[str, Any]:
+def build_chapter_context_payload(project_root: Path, chapter_num: int) -> dict[str, Any]:
     """Assemble full chapter context payload for text/json output."""
     outline = extract_chapter_outline(project_root, chapter_num)
 
@@ -344,9 +344,9 @@ def build_chapter_context_payload(project_root: Path, chapter_num: int) -> Dict[
     }
 
 
-def _render_text(payload: Dict[str, Any]) -> str:
+def _render_text(payload: dict[str, Any]) -> str:
     chapter_num = payload.get("chapter")
-    lines: List[str] = []
+    lines: list[str] = []
 
     lines.append(f"# 第 {chapter_num} 章创作上下文")
     lines.append("")

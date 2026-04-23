@@ -28,7 +28,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 from runtime_compat import normalize_windows_path
 from project_locator import resolve_project_root, write_current_project_pointer, update_global_registry_current_project
@@ -39,7 +38,7 @@ def _scripts_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-def _resolve_root(explicit_project_root: Optional[str]) -> Path:
+def _resolve_root(explicit_project_root: str | None) -> Path:
     # 允许显式传入工作区根目录或书项目根目录
     raw = explicit_project_root
     if raw:
@@ -106,7 +105,7 @@ def cmd_where(args: argparse.Namespace) -> int:
     return 0
 
 
-def _build_preflight_report(explicit_project_root: Optional[str]) -> dict:
+def _build_preflight_report(explicit_project_root: str | None) -> dict:
     scripts_dir = _scripts_dir().resolve()
     plugin_root = scripts_dir.parent
     skill_root = plugin_root / "skills" / "webnovel-write"
@@ -161,7 +160,7 @@ def cmd_use(args: argparse.Namespace) -> int:
     except Exception:
         project_root = project_root
 
-    workspace_root: Optional[Path] = None
+    workspace_root: Path | None = None
     if args.workspace_root:
         workspace_root = normalize_windows_path(args.workspace_root).expanduser()
         try:

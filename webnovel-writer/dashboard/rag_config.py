@@ -7,7 +7,6 @@ import os
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 
 class RAGConfig:
@@ -20,7 +19,7 @@ class RAGConfig:
     # 配置读写
     # -----------------------------------------------------------------
 
-    def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    def get(self, key: str, default: str | None = None) -> str | None:
         """获取 RAG 配置项，优先从 .env 读取。"""
         # 1. 尝试 .env
         if self.env_path.exists():
@@ -37,7 +36,7 @@ class RAGConfig:
                 pass
         return default
 
-    def get_openai_key(self) -> Optional[str]:
+    def get_openai_key(self) -> str | None:
         """Get the API key for embedding calls.
 
         Checks both RAG_EMBEDDING_API_KEY (set by the frontend RAG config UI)

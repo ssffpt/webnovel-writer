@@ -38,7 +38,7 @@ import time
 from pathlib import Path
 
 from runtime_compat import enable_windows_utf8_stdio
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any
 from dataclasses import dataclass, field
 from contextlib import contextmanager
 from datetime import datetime
@@ -60,7 +60,7 @@ class ChapterMeta:
     title: str
     location: str
     word_count: int
-    characters: List[str]
+    characters: list[str]
     summary: str = ""
 
 
@@ -74,7 +74,7 @@ class SceneMeta:
     end_line: int
     location: str
     summary: str
-    characters: List[str]
+    characters: list[str]
 
 
 @dataclass
@@ -182,10 +182,10 @@ class ChapterReadingPowerMeta:
     chapter: int
     hook_type: str = ""  # 章末钩子类型
     hook_strength: str = "medium"  # strong / medium / weak
-    coolpoint_patterns: List[str] = field(default_factory=list)  # 使用的爽点模式
-    micropayoffs: List[str] = field(default_factory=list)  # 微兑现列表
-    hard_violations: List[str] = field(default_factory=list)  # 硬约束违规
-    soft_suggestions: List[str] = field(default_factory=list)  # 软建议
+    coolpoint_patterns: list[str] = field(default_factory=list)  # 使用的爽点模式
+    micropayoffs: list[str] = field(default_factory=list)  # 微兑现列表
+    hard_violations: list[str] = field(default_factory=list)  # 硬约束违规
+    soft_suggestions: list[str] = field(default_factory=list)  # 软建议
     is_transition: bool = False  # 是否为过渡章
     override_count: int = 0  # Override Contract数量
     debt_balance: float = 0.0  # 当前债务余额
@@ -198,9 +198,9 @@ class ReviewMetrics:
     start_chapter: int
     end_chapter: int
     overall_score: float = 0.0
-    dimension_scores: Dict[str, float] = field(default_factory=dict)
-    severity_counts: Dict[str, int] = field(default_factory=dict)
-    critical_issues: List[str] = field(default_factory=list)
+    dimension_scores: dict[str, float] = field(default_factory=dict)
+    severity_counts: dict[str, int] = field(default_factory=dict)
+    critical_issues: list[str] = field(default_factory=list)
     report_file: str = ""
     notes: str = ""
 
@@ -219,8 +219,8 @@ class WritingChecklistScoreMeta:
     completed_weight: float = 0.0
     completion_rate: float = 0.0
     score: float = 0.0
-    score_breakdown: Dict[str, Any] = field(default_factory=dict)
-    pending_items: List[str] = field(default_factory=list)
+    score_breakdown: dict[str, Any] = field(default_factory=dict)
+    pending_items: list[str] = field(default_factory=list)
     source: str = "context_manager"
     notes: str = ""
 
@@ -886,9 +886,9 @@ def main():
     def _append_timing(
         success: bool,
         *,
-        error_code: Optional[str] = None,
-        error_message: Optional[str] = None,
-        chapter: Optional[int] = None,
+        error_code: str | None = None,
+        error_message: str | None = None,
+        chapter: int | None = None,
     ):
         elapsed_ms = int((time.perf_counter() - command_started_at) * 1000)
         safe_append_perf_timing(
@@ -901,12 +901,12 @@ def main():
             error_message=error_message,
         )
 
-    def emit_success(data=None, message: str = "ok", chapter: Optional[int] = None):
+    def emit_success(data=None, message: str = "ok", chapter: int | None = None):
         print_success(data, message=message)
         safe_log_tool_call(manager, tool_name=tool_name, success=True, chapter=chapter)
         _append_timing(True, chapter=chapter)
 
-    def emit_error(code: str, message: str, suggestion: Optional[str] = None, chapter: Optional[int] = None):
+    def emit_error(code: str, message: str, suggestion: str | None = None, chapter: int | None = None):
         print_error(code, message, suggestion=suggestion)
         safe_log_tool_call(
             manager,

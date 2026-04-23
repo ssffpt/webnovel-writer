@@ -179,9 +179,11 @@ class InitSkillHandler(SkillHandler):
 
     def _build_summary(self, context: dict) -> str:
         """生成项目摘要文本。"""
+        tw = context.get('target_words', 0)
+        tw_display = f"{tw} 万字" if tw and int(tw) < 10000 else f"{tw} 字"
         return f"""书名：{context.get('title', '')}
 题材：{', '.join(context.get('genres', []))}
-目标规模：{context.get('target_words', 0)} 字 / {context.get('target_chapters', 0)} 章
+目标规模：{tw_display} / {context.get('target_chapters', 0)} 章
 一句话故事：{context.get('one_line_story', '')}
 核心冲突：{context.get('core_conflict', '')}
 
@@ -207,12 +209,16 @@ class InitSkillHandler(SkillHandler):
 
         adapter = ScriptAdapter(project_root=context.get("project_root", ""))
 
+        # target_words 单位转换：万字→字
+        target_words_raw = context.get("target_words", 200)
+        target_words = int(target_words_raw) * 10000 if target_words_raw and int(target_words_raw) < 10000 else int(target_words_raw)
+
         # 1. 调用 init_project.py
         result = await adapter.init_project(
             title=context.get("title", ""),
             genre=context.get("genres", [""])[0] if context.get("genres") else "",
             protagonist_name=context.get("protagonist_name", ""),
-            target_words=context.get("target_words", 2000000),
+            target_words=target_words,
             target_chapters=context.get("target_chapters", 600),
             golden_finger_name=context.get("golden_finger_name", ""),
             golden_finger_type=context.get("golden_finger_type", ""),

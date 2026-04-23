@@ -21,7 +21,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from runtime_compat import enable_windows_utf8_stdio
-from typing import Dict, List, Optional, Any
+from typing import Any
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 import filelock
@@ -47,8 +47,8 @@ class EntityState:
     name: str
     type: str  # 角色/地点/物品/势力
     tier: str = "装饰"  # 核心/重要/次要/装饰
-    aliases: List[str] = field(default_factory=list)
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    aliases: list[str] = field(default_factory=list)
+    attributes: dict[str, Any] = field(default_factory=dict)
     first_appearance: int = 0
     last_appearance: int = 0
 
@@ -81,10 +81,10 @@ class _EntityPatch:
     entity_type: str
     entity_id: str
     replace: bool = False
-    base_entity: Optional[Dict[str, Any]] = None  # 新建实体时的完整快照（用于填充缺失字段）
-    top_updates: Dict[str, Any] = field(default_factory=dict)
-    current_updates: Dict[str, Any] = field(default_factory=dict)
-    appearance_chapter: Optional[int] = None
+    base_entity: dict[str, Any] | None = None  # 新建实体时的完整快照（用于填充缺失字段）
+    top_updates: dict[str, Any] = field(default_factory=dict)
+    current_updates: dict[str, Any] = field(default_factory=dict)
+    appearance_chapter: int | None = None
 
 
 class StateManager:
@@ -102,7 +102,7 @@ class StateManager:
         - enable_sqlite_sync: 是否启用 SQLite 同步 (默认 True)
         """
         self.config = config or get_config()
-        self._state: Dict[str, Any] = {}
+        self._state: dict[str, Any] = {}
         # 与 security_utils.atomic_write_json 保持一致：state.json.lock
         self._lock_path = self.config.state_file.with_suffix(self.config.state_file.suffix + ".lock")
 
@@ -117,18 +117,18 @@ class StateManager:
                 pass  # SQLStateManager 不可用时静默降级
 
         # 待写入的增量（锁内重读 + 合并 + 写入）
-        self._pending_entity_patches: Dict[tuple[str, str], _EntityPatch] = {}
-        self._pending_alias_entries: Dict[str, List[Dict[str, str]]] = {}
-        self._pending_state_changes: List[Dict[str, Any]] = []
-        self._pending_structured_relationships: List[Dict[str, Any]] = []
-        self._pending_disambiguation_warnings: List[Dict[str, Any]] = []
-        self._pending_disambiguation_pending: List[Dict[str, Any]] = []
-        self._pending_progress_chapter: Optional[int] = None
+        self._pending_entity_patches: dict[tuple[str, str], _EntityPatch] = {}
+        self._pending_alias_entries: dict[str, list[dict[str, str]]] = {}
+        self._pending_state_changes: list[dict[str, Any]] = []
+        self._pending_structured_relationships: list[dict[str, Any]] = []
+        self._pending_disambiguation_warnings: list[dict[str, Any]] = []
+        self._pending_disambiguation_pending: list[dict[str, Any]] = []
+        self._pending_progress_chapter: int | None = None
         self._pending_progress_words_delta: int = 0
-        self._pending_chapter_meta: Dict[str, Any] = {}
+        self._pending_chapter_meta: dict[str, Any] = {}
 
         # v5.1 引入: 缓存待同步到 SQLite 的数据
-        self._pending_sqlite_data: Dict[str, Any] = {
+        self._pending_sqlite_data: dict[str, Any] = {
             "entities_appeared": [],
             "entities_new": [],
             "state_changes": [],
@@ -141,7 +141,7 @@ class StateManager:
     def _now_progress_timestamp(self) -> str:
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    def _ensure_state_schema(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    def _ensure_state_schema(self, state: dict[str, Any]) -> dict[str, Any]:
         """确保 state.json 具备运行所需的关键字段（尽量不破坏既有数据）。"""
         if not isinstance(state, dict):
             state = {}
@@ -278,7 +278,7 @@ class StateManager:
                         warnings_list = []
                         disk_state["disambiguation_warnings"] = warnings_list
 
-                    def _warn_key(w: Dict[str, Any]) -> tuple:
+                    def _warn_key(w: dict[str, Any]) -> tuple:
                         return (
                             w.get("chapter"),
                             w.get("mention"),
@@ -308,7 +308,7 @@ class StateManager:
                         pending_list = []
                         disk_state["disambiguation_pending"] = pending_list
 
-                    def _pending_key(w: Dict[str, Any]) -> tuple:
+                    def _pending_key(w: dict[str, Any]) -> tuple:
                         return (
                             w.get("chapter"),
                             w.get("mention"),
@@ -558,7 +558,7 @@ class StateManager:
             logger.warning("SQLite sync failed: %s", e)
             return False
 
-    def _snapshot_sqlite_pending(self) -> Dict[str, Any]:
+    def _snapshot_sqlite_pending(self) -> dict[str, Any]:
         """抓取 SQLite 侧 pending 快照，用于同步失败回滚内存队列。"""
         return {
             "entity_patches": deepcopy(self._pending_entity_patches),
@@ -568,7 +568,7 @@ class StateManager:
             "sqlite_data": deepcopy(self._pending_sqlite_data),
         }
 
-    def _restore_sqlite_pending(self, snapshot: Dict[str, Any]) -> None:
+    def _restore_sqlite_pending(self, snapshot: dict[str, Any]) -> None:
         """恢复 SQLite 侧 pending 快照，避免同步失败后数据静默丢失。"""
         self._pending_entity_patches = snapshot.get("entity_patches", {})
         self._pending_alias_entries = snapshot.get("alias_entries", {})
@@ -617,7 +617,7 @@ class StateManager:
 
     # ==================== 实体管理 (v5.1 SQLite-first) ====================
 
-    def get_entity(self, entity_id: str, entity_type: str = None) -> Optional[Dict]:
+    def get_entity(self, entity_id: str, entity_type: str = None) -> Dict | None:
         """获取实体（v5.1 引入：优先从 SQLite 读取）"""
         # v5.1 引入: 优先从 SQLite 读取
         if self._sql_state_manager:
@@ -636,7 +636,7 @@ class StateManager:
                 return entities[entity_id]
         return None
 
-    def get_entity_type(self, entity_id: str) -> Optional[str]:
+    def get_entity_type(self, entity_id: str) -> str | None:
         """获取实体所属类型"""
         # v5.1 引入: 优先从 SQLite 读取
         if self._sql_state_manager:
@@ -650,7 +650,7 @@ class StateManager:
                 return type_name
         return None
 
-    def get_all_entities(self) -> Dict[str, Dict]:
+    def get_all_entities(self) -> dict[str, Dict]:
         """获取所有实体（扁平化视图）"""
         # v5.1 引入: 优先从 SQLite 读取
         if self._sql_state_manager:
@@ -671,7 +671,7 @@ class StateManager:
                 result[eid] = {**e, "type": type_name}
         return result
 
-    def get_entities_by_type(self, entity_type: str) -> Dict[str, Dict]:
+    def get_entities_by_type(self, entity_type: str) -> dict[str, Dict]:
         """按类型获取实体"""
         # v5.1 引入: 优先从 SQLite 读取
         if self._sql_state_manager:
@@ -682,7 +682,7 @@ class StateManager:
         # 回退到内存 state
         return self._state.get("entities_v3", {}).get(entity_type, {})
 
-    def get_entities_by_tier(self, tier: str) -> Dict[str, Dict]:
+    def get_entities_by_tier(self, tier: str) -> dict[str, Dict]:
         """按层级获取实体"""
         # v5.1 引入: 优先从 SQLite 读取
         if self._sql_state_manager:
@@ -757,7 +757,7 @@ class StateManager:
         if self._sql_state_manager:
             self._sql_state_manager._index_manager.register_alias(alias, entity_id, entity_type)
 
-    def update_entity(self, entity_id: str, updates: Dict[str, Any], entity_type: str = None) -> bool:
+    def update_entity(self, entity_id: str, updates: dict[str, Any], entity_type: str = None) -> bool:
         """更新实体属性（v5.0 引入，v5.4 沿用）"""
         # v5.1+ SQLite-first:
         # - entity_type 可能来自 SQLite（entities 表），但 state.json 不再持久化 entities_v3。
@@ -873,7 +873,7 @@ class StateManager:
         # 同时更新实体属性
         self.update_entity(entity_id, {"attributes": {field: new_value}})
 
-    def get_state_changes(self, entity_id: Optional[str] = None) -> List[Dict]:
+    def get_state_changes(self, entity_id: str | None = None) -> list[Dict]:
         """获取状态变化历史"""
         changes = self._state.get("state_changes", [])
         if entity_id:
@@ -906,7 +906,7 @@ class StateManager:
         self._state["structured_relationships"].append(rel_dict)
         self._pending_structured_relationships.append(rel_dict)
 
-    def get_relationships(self, entity_id: Optional[str] = None) -> List[Dict]:
+    def get_relationships(self, entity_id: str | None = None) -> list[Dict]:
         """获取关系列表"""
         rels = self._state.get("structured_relationships", [])
         if entity_id:
@@ -918,7 +918,7 @@ class StateManager:
 
     # ==================== 批量操作 ====================
 
-    def _record_disambiguation(self, chapter: int, uncertain_items: Any) -> List[str]:
+    def _record_disambiguation(self, chapter: int, uncertain_items: Any) -> list[str]:
         """
         记录消歧反馈到 state.json，便于 Writer/Context Agent 感知风险。
 
@@ -929,7 +929,7 @@ class StateManager:
         if not isinstance(uncertain_items, list) or not uncertain_items:
             return []
 
-        warnings: List[str] = []
+        warnings: list[str] = []
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         for item in uncertain_items:
@@ -948,13 +948,13 @@ class StateManager:
 
             # 候选：支持 [{"type","id"}...] 或 ["id1","id2"] 两种形式
             candidates_raw = item.get("candidates", [])
-            candidates: List[Dict[str, str]] = []
+            candidates: list[dict[str, str]] = []
             if isinstance(candidates_raw, list):
                 for c in candidates_raw:
                     if isinstance(c, dict):
                         cid = str(c.get("id", "") or "").strip()
                         ctype = str(c.get("type", "") or "").strip()
-                        entry: Dict[str, str] = {}
+                        entry: dict[str, str] = {}
                         if ctype:
                             entry["type"] = ctype
                         if cid:
@@ -982,7 +982,7 @@ class StateManager:
             context = str(item.get("context", "") or "").strip()
             note = str(item.get("warning", "") or "").strip()
 
-            record: Dict[str, Any] = {
+            record: dict[str, Any] = {
                 "chapter": int(chapter),
                 "mention": mention,
                 "type": entity_type,
@@ -1007,7 +1007,7 @@ class StateManager:
 
         return warnings
 
-    def process_chapter_result(self, chapter: int, result: Dict) -> List[str]:
+    def process_chapter_result(self, chapter: int, result: Dict) -> list[str]:
         """
         处理 Data Agent 的章节处理结果（v5.1 引入，v5.4 沿用）
 
@@ -1124,7 +1124,7 @@ class StateManager:
 
     # ==================== 主角同步 ====================
 
-    def get_protagonist_entity_id(self) -> Optional[str]:
+    def get_protagonist_entity_id(self) -> str | None:
         """获取主角实体 ID（通过 is_protagonist 标记或 SQLite 查询）"""
         # 方式1: 通过 SQLStateManager 查询 (v5.1)
         if self._sql_state_manager:

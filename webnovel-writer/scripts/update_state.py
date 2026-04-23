@@ -52,7 +52,7 @@ from pathlib import Path
 
 from runtime_compat import enable_windows_utf8_stdio
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any
 
 # ============================================================================
 # 安全修复：导入安全工具函数（P1 MEDIUM）

@@ -55,7 +55,6 @@ from pathlib import Path
 
 from runtime_compat import enable_windows_utf8_stdio
 from datetime import datetime
-from typing import Optional, List, Tuple
 
 # ============================================================================
 # 安全修复：导入安全工具函数（P1 MEDIUM）
@@ -142,7 +141,7 @@ __pycache__/
             print(f"❌ Git 初始化失败: {e}")
             return False
 
-    def _run_git_command(self, args: List[str], check: bool = True) -> Tuple[bool, str]:
+    def _run_git_command(self, args: list[str], check: bool = True) -> tuple[bool, str]:
         """执行 Git 命令（支持优雅降级）"""
         if not self.git_available:
             return False, "Git 不可用"

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class IndexChapterMixin:
@@ -33,7 +33,7 @@ class IndexChapterMixin:
             )
             conn.commit()
 
-    def get_chapter(self, chapter: int) -> Optional[Dict]:
+    def get_chapter(self, chapter: int) -> Dict | None:
         """获取章节元数据"""
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -43,7 +43,7 @@ class IndexChapterMixin:
                 return self._row_to_dict(row, parse_json=["characters"])
             return None
 
-    def get_recent_chapters(self, limit: int = None) -> List[Dict]:
+    def get_recent_chapters(self, limit: int = None) -> list[Dict]:
         """获取最近章节"""
         if limit is None:
             limit = self.config.query_recent_chapters_limit
@@ -64,7 +64,7 @@ class IndexChapterMixin:
 
     # ==================== 场景操作 ====================
 
-    def add_scenes(self, chapter: int, scenes: List[SceneMeta]):
+    def add_scenes(self, chapter: int, scenes: list[SceneMeta]):
         """添加章节场景"""
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -93,7 +93,7 @@ class IndexChapterMixin:
 
             conn.commit()
 
-    def get_scenes(self, chapter: int) -> List[Dict]:
+    def get_scenes(self, chapter: int) -> list[Dict]:
         """获取章节场景"""
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -110,7 +110,7 @@ class IndexChapterMixin:
                 for row in cursor.fetchall()
             ]
 
-    def search_scenes_by_location(self, location: str, limit: int = None) -> List[Dict]:
+    def search_scenes_by_location(self, location: str, limit: int = None) -> list[Dict]:
         """按地点搜索场景"""
         if limit is None:
             limit = self.config.query_scenes_by_location_limit
@@ -136,7 +136,7 @@ class IndexChapterMixin:
         self,
         entity_id: str,
         chapter: int,
-        mentions: List[str],
+        mentions: list[str],
         confidence: float = 1.0,
         skip_if_exists: bool = False,
     ):
@@ -176,7 +176,7 @@ class IndexChapterMixin:
             )
             conn.commit()
 
-    def get_entity_appearances(self, entity_id: str, limit: int = None) -> List[Dict]:
+    def get_entity_appearances(self, entity_id: str, limit: int = None) -> list[Dict]:
         """获取实体出场记录"""
         if limit is None:
             limit = self.config.query_entity_appearances_limit
@@ -196,7 +196,7 @@ class IndexChapterMixin:
                 for row in cursor.fetchall()
             ]
 
-    def get_recent_appearances(self, limit: int = None) -> List[Dict]:
+    def get_recent_appearances(self, limit: int = None) -> list[Dict]:
         """获取最近出场的实体"""
         if limit is None:
             limit = self.config.query_recent_appearances_limit
@@ -214,7 +214,7 @@ class IndexChapterMixin:
             )
             return [dict(row) for row in cursor.fetchall()]
 
-    def get_chapter_appearances(self, chapter: int) -> List[Dict]:
+    def get_chapter_appearances(self, chapter: int) -> list[Dict]:
         """获取某章所有出场实体"""
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -239,9 +239,9 @@ class IndexChapterMixin:
         title: str,
         location: str,
         word_count: int,
-        entities: List[Dict],
-        scenes: List[Dict],
-    ) -> Dict[str, int]:
+        entities: list[Dict],
+        scenes: list[Dict],
+    ) -> dict[str, int]:
         """
         处理章节数据，批量写入索引
 

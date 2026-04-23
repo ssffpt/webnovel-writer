@@ -9,14 +9,14 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
 
 
 class IndexObservabilityMixin:
-    def _row_to_dict(self, row: sqlite3.Row, parse_json: List[str] = None) -> Dict:
+    def _row_to_dict(self, row: sqlite3.Row, parse_json: list[str] = None) -> Dict:
         """将 Row 转换为字典"""
         d = dict(row)
         if parse_json:
@@ -40,7 +40,7 @@ class IndexObservabilityMixin:
         source_id: str,
         reason: str,
         marked_by: str = "user",
-        chapter_discovered: Optional[int] = None,
+        chapter_discovered: int | None = None,
     ) -> int:
         """标记无效事实（pending）"""
         with self._get_conn() as conn:
@@ -77,7 +77,7 @@ class IndexObservabilityMixin:
             conn.commit()
             return cursor.rowcount > 0
 
-    def list_invalid_facts(self, status: Optional[str] = None) -> List[Dict]:
+    def list_invalid_facts(self, status: str | None = None) -> list[Dict]:
         """列出无效事实"""
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -107,9 +107,9 @@ class IndexObservabilityMixin:
         query: str,
         query_type: str,
         results_count: int,
-        hit_sources: Optional[str] = None,
-        latency_ms: Optional[int] = None,
-        chapter: Optional[int] = None,
+        hit_sources: str | None = None,
+        latency_ms: int | None = None,
+        chapter: int | None = None,
     ) -> None:
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -128,9 +128,9 @@ class IndexObservabilityMixin:
         tool_name: str,
         success: bool,
         retry_count: int = 0,
-        error_code: Optional[str] = None,
-        error_message: Optional[str] = None,
-        chapter: Optional[int] = None,
+        error_code: str | None = None,
+        error_message: str | None = None,
+        chapter: int | None = None,
     ) -> None:
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -144,7 +144,7 @@ class IndexObservabilityMixin:
             )
             conn.commit()
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         """获取索引统计"""
         with self._get_conn() as conn:
             cursor = conn.cursor()

@@ -13,7 +13,7 @@ import json
 import sqlite3
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from enum import Enum
@@ -42,7 +42,7 @@ class StyleSample:
     scene_type: str
     content: str
     score: float
-    tags: List[str]
+    tags: list[str]
     created_at: str = ""
 
 
@@ -116,7 +116,7 @@ class StyleSampler:
         scene_type: str,
         limit: int = 5,
         min_score: float = 0.0
-    ) -> List[StyleSample]:
+    ) -> list[StyleSample]:
         """按场景类型获取样本"""
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -130,7 +130,7 @@ class StyleSampler:
 
             return [self._row_to_sample(row) for row in cursor.fetchall()]
 
-    def get_best_samples(self, limit: int = 10) -> List[StyleSample]:
+    def get_best_samples(self, limit: int = 10) -> list[StyleSample]:
         """获取最高分样本"""
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -162,8 +162,8 @@ class StyleSampler:
         chapter: int,
         content: str,
         review_score: float,
-        scenes: List[Dict]
-    ) -> List[StyleSample]:
+        scenes: list[Dict]
+    ) -> list[StyleSample]:
         """
         从章节中提取风格样本候选
 
@@ -219,7 +219,7 @@ class StyleSampler:
         else:
             return SceneType.DESCRIPTION.value
 
-    def _extract_tags(self, content: str) -> List[str]:
+    def _extract_tags(self, content: str) -> list[str]:
         """提取内容标签"""
         tags = []
 
@@ -240,9 +240,9 @@ class StyleSampler:
     def select_samples_for_chapter(
         self,
         chapter_outline: str,
-        target_types: List[str] = None,
+        target_types: list[str] = None,
         max_samples: int = 3
-    ) -> List[StyleSample]:
+    ) -> list[StyleSample]:
         """
         为章节写作选择合适的风格样本
 
@@ -261,7 +261,7 @@ class StyleSampler:
 
         return samples[:max_samples]
 
-    def _infer_scene_types(self, outline: str) -> List[str]:
+    def _infer_scene_types(self, outline: str) -> list[str]:
         """从大纲推断需要的场景类型"""
         types = []
 
@@ -281,7 +281,7 @@ class StyleSampler:
 
     # ==================== 统计 ====================
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """获取样本统计"""
         with self._get_conn() as conn:
             cursor = conn.cursor()

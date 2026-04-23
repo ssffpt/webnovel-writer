@@ -65,13 +65,27 @@ function AutoStepPanel({ step }) {
 // --- Form Step Panel ---
 
 function FormStepPanel({ step, onSubmit }) {
-  const [formData, setFormData] = useState({})
+  const [formData, setFormData] = useState(() => {
+    // 回显已提交的数据（从 input_data 恢复）
+    const saved = step.input_data ?? {}
+    return { ...saved }
+  })
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const schema = step.schema ?? step.output_data?.schema ?? {}
 
   function handleChange(field, value) {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  function handleMultiSelectToggle(field, option) {
+    setFormData(prev => {
+      const current = prev[field] ?? []
+      const next = current.includes(option)
+        ? current.filter(v => v !== option)
+        : [...current, option]
+      return { ...prev, [field]: next }
+    })
   }
 
   async function handleSubmit(e) {
@@ -81,20 +95,21 @@ function FormStepPanel({ step, onSubmit }) {
     try {
       await onSubmit(step.id, formData)
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : '\u63d0\u4ea4\u5931\u8d25')
+      setFormError(err instanceof Error ? err.message : '提交失败')
     } finally {
       setSubmitting(false)
     }
   }
 
   const fields = schema.fields ?? []
+  const isLastStep = false // 将由父组件传入
 
   return (
     <div className="skill-flow-step-panel skill-flow-step-panel--form">
       <h4 className="skill-flow-step-title">{step.name || step.id}</h4>
       <form onSubmit={handleSubmit} className="skill-flow-form">
         {fields.length === 0 && (
-          <p className="skill-flow-no-fields">\u8be5\u6b65\u9aa4\u6ca1\u6709\u8868\u5355\u5b57\u6bb5</p>
+          <p className="skill-flow-no-fields">该步骤没有表单字段</p>
         )}
         {fields.map(field => (
           <div key={field.name} className="skill-flow-form-field">
@@ -107,9 +122,49 @@ function FormStepPanel({ step, onSubmit }) {
                 className="skill-flow-form-textarea"
                 value={formData[field.name] ?? ''}
                 onChange={e => handleChange(field.name, e.target.value)}
-                placeholder={field.placeholder}
+                placeholder={field.hint || field.placeholder}
                 required={field.required}
                 rows={4}
+              />
+            ) : field.type === 'select' ? (
+              <select
+                className="skill-flow-form-select"
+                value={formData[field.name] ?? ''}
+                onChange={e => handleChange(field.name, e.target.value)}
+                required={field.required}
+              >
+                <option value="">请选择</option>
+                {(field.options ?? []).map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            ) : field.type === 'multi_select' ? (
+              <div className="skill-flow-form-multi-select">
+                {(field.options ?? []).map(opt => {
+                  const selected = (formData[field.name] ?? []).includes(opt)
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      className={`skill-flow-tag ${selected ? 'skill-flow-tag--selected' : ''}`}
+                      onClick={() => handleMultiSelectToggle(field.name, opt)}
+                    >
+                      {opt}
+                    </button>
+                  )
+                })}
+                {(formData[field.name] ?? []).length === 0 && (
+                  <span className="skill-flow-form-hint">{field.hint || '点击选择'}</span>
+                )}
+              </div>
+            ) : field.type === 'number' ? (
+              <input
+                type="number"
+                className="skill-flow-form-input"
+                value={formData[field.name] ?? field.default ?? ''}
+                onChange={e => handleChange(field.name, e.target.value ? Number(e.target.value) : '')}
+                placeholder={field.hint || field.placeholder}
+                required={field.required}
               />
             ) : (
               <input
@@ -117,12 +172,12 @@ function FormStepPanel({ step, onSubmit }) {
                 className="skill-flow-form-input"
                 value={formData[field.name] ?? ''}
                 onChange={e => handleChange(field.name, e.target.value)}
-                placeholder={field.placeholder}
+                placeholder={field.hint || field.placeholder}
                 required={field.required}
               />
             )}
-            {field.description && (
-              <span className="skill-flow-form-hint">{field.description}</span>
+            {field.hint && field.type !== 'multi_select' && (
+              <span className="skill-flow-form-hint">{field.hint}</span>
             )}
           </div>
         ))}
@@ -133,7 +188,7 @@ function FormStepPanel({ step, onSubmit }) {
             className="workbench-primary-button"
             disabled={submitting}
           >
-            {submitting ? '\u63d0\u4ea4\u4e2d...' : '\u63d0\u4ea4'}
+            {submitting ? '提交中...' : '下一步'}
           </button>
         </div>
       </form>
@@ -147,15 +202,43 @@ function ConfirmStepPanel({ step, onConfirm, onCancel, confirming }) {
   return (
     <div className="skill-flow-step-panel skill-flow-step-panel--confirm">
       <h4 className="skill-flow-step-title">{step.name || step.id}</h4>
-      {step.output_data?.message && (
+      {step.output_data?.instruction && (
+        <p className="skill-flow-confirm-message">{step.output_data.instruction}</p>
+      )}
+      {step.output_data?.summary && (
+        <pre className="skill-flow-confirm-result">{step.output_data.summary}</pre>
+      )}
+      {step.output_data?.packages && (
+        <div className="skill-flow-packages">
+          {step.output_data.packages.map(pkg => (
+            <div key={pkg.id} className="skill-flow-package-card">
+              <h4>{pkg.name}</h4>
+              <p>{pkg.description}</p>
+              {pkg.constraints && (
+                <ul className="skill-flow-constraints">
+                  {pkg.constraints.map((c, i) => (
+                    <li key={i}><strong>{c.type}</strong>: {c.content}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {step.output_data?.message && !step.output_data?.summary && !step.output_data?.packages && (
         <p className="skill-flow-confirm-message">{step.output_data.message}</p>
       )}
-      {step.output_data?.result != null && (
+      {step.output_data?.result != null && !step.output_data?.summary && (
         <pre className="skill-flow-confirm-result">
           {typeof step.output_data.result === 'object'
             ? JSON.stringify(step.output_data.result, null, 2)
             : String(step.output_data.result)}
         </pre>
+      )}
+      {step.output_data?.missing?.length > 0 && (
+        <div className="gate-warning">
+          <p>以下必填项缺失：{step.output_data.missing.join('、')}</p>
+        </div>
       )}
       <div className="skill-flow-confirm-actions">
         <button
@@ -164,7 +247,7 @@ function ConfirmStepPanel({ step, onConfirm, onCancel, confirming }) {
           onClick={onCancel}
           disabled={confirming}
         >
-          \u53d6\u6d88
+          返回
         </button>
         <button
           type="button"
@@ -172,7 +255,7 @@ function ConfirmStepPanel({ step, onConfirm, onCancel, confirming }) {
           onClick={onConfirm}
           disabled={confirming}
         >
-          {confirming ? '\u5904\u7406\u4e2d...' : '\u786e\u8ba4'}
+          {confirming ? '处理中...' : '确认'}
         </button>
       </div>
     </div>
@@ -248,6 +331,7 @@ function mergeStepsAndStates(steps, stepStates) {
       schema: def.schema ?? null,
       status: state ? normalizeStepStatus(state.status) : 'pending',
       output_data: state?.output_data ?? null,
+      input_data: state?.input_data ?? null,
       progress: state?.progress ?? 0,
     }
   })
@@ -371,7 +455,7 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
             : s.status === 'failed' ? 'failed'
             : s.status === 'cancelled' ? 'cancelled'
             : 'active',
-          skillName: s.skill_name || s.name || skillId,
+          skillName: s.display_name || s.skill_name || s.name || skillId,
           steps: mergedSteps,
           currentStep: current,
           logs: s.logs ?? [],
@@ -537,10 +621,10 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
         {state.status === 'active' && (
           <button
             type="button"
-            className="workbench-nav-button"
+            className="workbench-nav-button skill-flow-cancel-btn"
             onClick={handleCancelStep}
           >
-            \u53d6\u6d88
+            取消流程
           </button>
         )}
       </div>

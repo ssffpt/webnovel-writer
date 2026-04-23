@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 
 from runtime_compat import enable_windows_utf8_stdio
-from typing import Any, Dict, List
+from typing import Any
 import re
 
 # 安全修复：导入安全工具函数
@@ -81,7 +81,7 @@ def _normalize_genre_key(key: str) -> str:
     return aliases.get(key, key)
 
 
-def _apply_label_replacements(text: str, replacements: Dict[str, str]) -> str:
+def _apply_label_replacements(text: str, replacements: dict[str, str]) -> str:
     if not text or not replacements:
         return text
     lines = text.splitlines()
@@ -97,8 +97,8 @@ def _apply_label_replacements(text: str, replacements: Dict[str, str]) -> str:
     return "\n".join(lines)
 
 
-def _parse_tier_map(raw: str) -> Dict[str, str]:
-    result: Dict[str, str] = {}
+def _parse_tier_map(raw: str) -> dict[str, str]:
+    result: dict[str, str] = {}
     if not raw:
         return result
     for part in raw.split(";"):
@@ -111,7 +111,7 @@ def _parse_tier_map(raw: str) -> Dict[str, str]:
     return result
 
 
-def _render_team_rows(names: List[str], roles: List[str]) -> List[str]:
+def _render_team_rows(names: list[str], roles: list[str]) -> list[str]:
     rows = []
     for idx, name in enumerate(names):
         role = roles[idx] if idx < len(roles) else ""
@@ -119,7 +119,7 @@ def _render_team_rows(names: List[str], roles: List[str]) -> List[str]:
     return rows
 
 
-def _ensure_state_schema(state: Dict[str, Any]) -> Dict[str, Any]:
+def _ensure_state_schema(state: dict[str, Any]) -> dict[str, Any]:
     """确保 state.json 具备 v5.1 架构所需的字段集合（v5.4 沿用）。
 
     v5.1 变更:
@@ -288,7 +288,7 @@ def init_project(
     state_path = project_path / ".webnovel" / "state.json"
     if state_path.exists():
         try:
-            state: Dict[str, Any] = json.loads(state_path.read_text(encoding="utf-8"))
+            state: dict[str, Any] = json.loads(state_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             state = {}
     else:
@@ -521,7 +521,7 @@ def init_project(
             lines = team_content.splitlines()
             new_rows = _render_team_rows(names, roles)
             replaced = False
-            out_lines: List[str] = []
+            out_lines: list[str] = []
             for line in lines:
                 if line.strip().startswith("| 主角A"):
                     out_lines.extend(new_rows)

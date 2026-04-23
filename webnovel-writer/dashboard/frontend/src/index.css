@@ -2662,6 +2662,117 @@ body {
   margin-top: 4px;
 }
 
+/* Select dropdown */
+
+.skill-flow-form-select {
+  border: 2px solid var(--border-main);
+  background: #fffef8;
+  color: var(--text-main);
+  padding: 8px 10px;
+  font: inherit;
+  border-radius: 6px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.skill-flow-form-select:focus {
+  border-color: var(--accent-main);
+  outline: none;
+}
+
+/* Multi-select tags */
+
+.skill-flow-form-multi-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 36px;
+  align-items: center;
+}
+
+.skill-flow-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid var(--border-main);
+  border-radius: 16px;
+  font-size: 13px;
+  cursor: pointer;
+  background: #fffef8;
+  color: var(--text-main);
+  transition: all 0.15s;
+}
+
+.skill-flow-tag:hover {
+  border-color: var(--accent-main);
+}
+
+.skill-flow-tag--selected {
+  background: var(--accent-main);
+  color: #fff;
+  border-color: var(--accent-main);
+}
+
+/* Packages in confirm step */
+
+.skill-flow-packages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.skill-flow-package-card {
+  border: 1px solid var(--border-main);
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: #fffef8;
+}
+
+.skill-flow-package-card h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.skill-flow-package-card p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-mute);
+}
+
+.skill-flow-constraints {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+}
+
+.skill-flow-constraints li {
+  padding: 2px 0;
+}
+
+.skill-flow-constraints strong {
+  color: var(--accent-main);
+  font-size: 12px;
+}
+
+/* Cancel button */
+
+.skill-flow-cancel-btn {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+/* Gate warning */
+
+.gate-warning {
+  padding: 8px 12px;
+  background: #fff3e0;
+  border-radius: 6px;
+  margin: 8px 0;
+  font-size: 13px;
+  color: #e65100;
+}
+
 .skill-flow-no-fields {
   color: var(--text-mute);
   font-size: 13px;

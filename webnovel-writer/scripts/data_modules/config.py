@@ -11,7 +11,6 @@ API 配置通过环境变量读取（支持 .env 文件）：
 import os
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Optional
 
 from runtime_compat import normalize_windows_path
 
@@ -323,10 +322,10 @@ class DataModulesConfig:
         return cls(project_root=root)
 
 
-_default_config: Optional[DataModulesConfig] = None
+_default_config: DataModulesConfig | None = None
 
 
-def get_config(project_root: Optional[Path] = None) -> DataModulesConfig:
+def get_config(project_root: Path | None = None) -> DataModulesConfig:
     global _default_config
     if project_root is not None:
         return DataModulesConfig.from_project_root(project_root)

@@ -7,10 +7,10 @@ Phase 1 以只读查询为主，并补充 workbench 所需的最小写接口；
 
 import asyncio
 import json
+import logging
 import sqlite3
 from contextlib import asynccontextmanager, closing
 from pathlib import Path
-from typing import Optional, Union
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,10 +30,12 @@ from .skill_models import SkillInstance, StepState
 from .skill_runner import SkillRunner
 from .rag_config import RAGConfig
 
+logger = logging.getLogger(__name__)
+
 # ---------------------------------------------------------------------------
 # 全局状态
 # ---------------------------------------------------------------------------
-_project_root: Optional[Path] = None
+_project_root: Path | None = None
 _watcher = FileWatcher()
 _task_service = TaskService()
 _PACKAGE_ROOT = Path(__file__).resolve().parent.parent  # webnovel-writer/ 包根目录
@@ -77,7 +79,7 @@ def unsubscribe_skill_events(q: asyncio.Queue) -> None:
         pass
 
 
-def _build_skill_step_event(instance: SkillInstance, step: Optional[StepState]) -> str:
+def _build_skill_step_event(instance: SkillInstance, step: StepState | None) -> str:
     """Build a JSON string for a skill.step SSE event."""
     step_dict = step.to_dict() if step else None
     return json.dumps(
@@ -121,7 +123,7 @@ async def push_skill_log(skill_id: str, message: str) -> None:
 
 def _make_skill_on_step_change(skill_id: str, skill_name: str) -> callable:
     """Factory: return an on_step_change callback that emits skill events."""
-    def callback(instance: SkillInstance, step: Optional[StepState]) -> None:
+    def callback(instance: SkillInstance, step: StepState | None) -> None:
         if instance.is_terminal():
             # Emit skill.completed / skill.failed
             if instance.status == "failed":
@@ -183,6 +185,7 @@ async def start_skill(skill_name: str, payload: dict) -> dict:
     instance = SkillInstance(
         id=f"{skill_name}-{len(_active_skills) + 1}",
         skill_name=skill_name,
+        display_name=default_registry.get_display_name(skill_name),
         status="created",
         project_root=str(_get_project_root()),
         steps=steps,
@@ -243,7 +246,7 @@ async def list_active_skills() -> dict:
 # 应用工厂
 # ---------------------------------------------------------------------------
 
-def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
+def create_app(project_root: str | Path | None = None) -> FastAPI:
     global _project_root
 
     if project_root:
@@ -288,28 +291,28 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
         return json.loads(state_path.read_text(encoding="utf-8"))
 
     @app.get("/api/query/foreshadowing")
-    def api_query_foreshadowing(project_root: Optional[str] = None):
+    def api_query_foreshadowing(project_root: str | None = None):
         """伏笔查询：三层分类 + 紧急度计算。"""
         root = Path(project_root) if project_root else _get_project_root()
         service = QueryService(str(root))
         return service.query_foreshadowing()
 
     @app.get("/api/query/golden-finger")
-    def api_query_golden_finger(project_root: Optional[str] = None):
+    def api_query_golden_finger(project_root: str | None = None):
         """金手指状态查询。"""
         root = Path(project_root) if project_root else _get_project_root()
         service = QueryService(str(root))
         return service.query_golden_finger()
 
     @app.get("/api/query/rhythm")
-    def api_query_rhythm(project_root: Optional[str] = None, volume_number: Optional[int] = None):
+    def api_query_rhythm(project_root: str | None = None, volume_number: int | None = None):
         """节奏分析查询。"""
         root = Path(project_root) if project_root else _get_project_root()
         service = QueryService(str(root))
         return service.query_rhythm(volume_number=volume_number)
 
     @app.get("/api/query/debt")
-    def api_query_debt(project_root: Optional[str] = None):
+    def api_query_debt(project_root: str | None = None):
         """债务查询。"""
         root = Path(project_root) if project_root else _get_project_root()
         service = QueryService(str(root))
@@ -422,7 +425,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
 
     @app.get("/api/entities")
     def list_entities(
-        entity_type: Optional[str] = Query(None, alias="type"),
+        entity_type: str | None = Query(None, alias="type"),
         include_archived: bool = False,
     ):
         """列出所有实体（可按类型过滤）。"""
@@ -450,7 +453,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
             return dict(row)
 
     @app.get("/api/relationships")
-    def list_relationships(entity: Optional[str] = None, limit: int = 200):
+    def list_relationships(entity: str | None = None, limit: int = 200):
         with closing(_get_db()) as conn:
             if entity:
                 rows = conn.execute(
@@ -466,9 +469,9 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
 
     @app.get("/api/relationship-events")
     def list_relationship_events(
-        entity: Optional[str] = None,
-        from_chapter: Optional[int] = None,
-        to_chapter: Optional[int] = None,
+        entity: str | None = None,
+        from_chapter: int | None = None,
+        to_chapter: int | None = None,
         limit: int = 200,
     ):
         with closing(_get_db()) as conn:
@@ -498,7 +501,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
             return [dict(r) for r in rows]
 
     @app.get("/api/scenes")
-    def list_scenes(chapter: Optional[int] = None, limit: int = 500):
+    def list_scenes(chapter: int | None = None, limit: int = 500):
         with closing(_get_db()) as conn:
             if chapter is not None:
                 rows = conn.execute(
@@ -527,7 +530,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
             return [dict(r) for r in rows]
 
     @app.get("/api/state-changes")
-    def list_state_changes(entity: Optional[str] = None, limit: int = 100):
+    def list_state_changes(entity: str | None = None, limit: int = 100):
         with closing(_get_db()) as conn:
             if entity:
                 rows = conn.execute(
@@ -541,7 +544,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
             return [dict(r) for r in rows]
 
     @app.get("/api/aliases")
-    def list_aliases(entity: Optional[str] = None):
+    def list_aliases(entity: str | None = None):
         with closing(_get_db()) as conn:
             if entity:
                 rows = conn.execute(
@@ -556,7 +559,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
     # ===========================================================
 
     @app.get("/api/overrides")
-    def list_overrides(status: Optional[str] = None, limit: int = 100):
+    def list_overrides(status: str | None = None, limit: int = 100):
         with closing(_get_db()) as conn:
             if status:
                 return _fetchall_safe(
@@ -571,7 +574,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
             )
 
     @app.get("/api/debts")
-    def list_debts(status: Optional[str] = None, limit: int = 100):
+    def list_debts(status: str | None = None, limit: int = 100):
         with closing(_get_db()) as conn:
             if status:
                 return _fetchall_safe(
@@ -586,7 +589,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
             )
 
     @app.get("/api/debt-events")
-    def list_debt_events(debt_id: Optional[int] = None, limit: int = 200):
+    def list_debt_events(debt_id: int | None = None, limit: int = 200):
         with closing(_get_db()) as conn:
             if debt_id is not None:
                 return _fetchall_safe(
@@ -601,7 +604,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
             )
 
     @app.get("/api/invalid-facts")
-    def list_invalid_facts(status: Optional[str] = None, limit: int = 100):
+    def list_invalid_facts(status: str | None = None, limit: int = 100):
         with closing(_get_db()) as conn:
             if status:
                 return _fetchall_safe(
@@ -616,7 +619,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
             )
 
     @app.get("/api/rag-queries")
-    def list_rag_queries(query_type: Optional[str] = None, limit: int = 100):
+    def list_rag_queries(query_type: str | None = None, limit: int = 100):
         with closing(_get_db()) as conn:
             if query_type:
                 return _fetchall_safe(
@@ -631,7 +634,7 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
             )
 
     @app.get("/api/tool-stats")
-    def list_tool_stats(tool_name: Optional[str] = None, limit: int = 200):
+    def list_tool_stats(tool_name: str | None = None, limit: int = 200):
         with closing(_get_db()) as conn:
             if tool_name:
                 return _fetchall_safe(
@@ -742,7 +745,9 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
 
     @app.post("/api/skill/{skill_name}/start")
     async def _start_skill(skill_name: str, payload: dict):
-        return await start_skill(skill_name, payload)
+        result = await start_skill(skill_name, payload)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=result)
 
     @app.get("/api/skill/{skill_id}/status")
     async def _get_skill_status(skill_id: str):

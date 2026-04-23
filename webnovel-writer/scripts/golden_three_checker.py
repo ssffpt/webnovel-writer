@@ -28,7 +28,7 @@ import argparse
 from pathlib import Path
 
 from runtime_compat import enable_windows_utf8_stdio
-from typing import Dict, List, Optional, Any
+from typing import Any
 
 # 导入项目定位和章节路径模块
 from project_locator import resolve_project_root
@@ -152,7 +152,7 @@ LLM_EVALUATION_PROMPT = """你是一位网文编辑，专门负责评估小说�
 class GoldenThreeChecker:
     """黄金三章检查器 v2.0"""
 
-    def __init__(self, chapter_files: List[str], mode: str = "keyword"):
+    def __init__(self, chapter_files: list[str], mode: str = "keyword"):
         """
         初始化检查器
 
@@ -165,8 +165,8 @@ class GoldenThreeChecker:
 
         self.chapter_files = chapter_files
         self.mode = mode
-        self.chapters: List[Dict[str, Any]] = []
-        self.results: Dict[str, Any] = {
+        self.chapters: list[dict[str, Any]] = []
+        self.results: dict[str, Any] = {
             "mode": mode,
             "ch1": {"主角300字内出场": False, "金手指线索": False, "强冲突开局": False, "详细": {}},
             "ch2": {"金手指展示": False, "初次小胜": False, "即时爽点": False, "详细": {}},
@@ -281,9 +281,9 @@ class GoldenThreeChecker:
         )
         return prompt
 
-    def parse_llm_response(self, xml_response: str) -> Dict[str, Any]:
+    def parse_llm_response(self, xml_response: str) -> dict[str, Any]:
         """解析 LLM 返回的 XML 评估结果"""
-        results: Dict[str, Any] = {
+        results: dict[str, Any] = {
             "mode": "llm",
             "ch1": {"详细": {}},
             "ch2": {"详细": {}},

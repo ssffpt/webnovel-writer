@@ -19,10 +19,13 @@ class SkillRegistry:
 
     def __init__(self) -> None:
         self._handlers: dict[str, type[SkillHandler]] = {}
+        self._display_names: dict[str, str] = {}
 
-    def register(self, name: str, handler_cls: type[SkillHandler]) -> None:
+    def register(self, name: str, handler_cls: type[SkillHandler], display_name: str | None = None) -> None:
         """Register a Skill Handler class under the given name."""
         self._handlers[name] = handler_cls
+        if display_name:
+            self._display_names[name] = display_name
 
     def get_handler(self, name: str) -> SkillHandler:
         """Instantiate and return the handler for the given skill name.
@@ -36,6 +39,10 @@ class SkillRegistry:
             raise KeyError(f"no handler registered for skill: {name}")
         return self._handlers[name]()
 
+    def get_display_name(self, name: str) -> str:
+        """Return the display name for a skill, falling back to the raw name."""
+        return self._display_names.get(name, name)
+
     def list_skills(self) -> list[str]:
         """Return the list of registered skill names."""
         return list(self._handlers.keys())
@@ -43,8 +50,8 @@ class SkillRegistry:
 
 # Module-level default registry with echo and init already registered.
 default_registry = SkillRegistry()
-default_registry.register("echo", EchoSkillHandler)
-default_registry.register("init", InitSkillHandler)
-default_registry.register("plan", PlanSkillHandler)
-default_registry.register("write", WriteSkillHandler)
-default_registry.register("review", ReviewSkillHandler)
+default_registry.register("echo", EchoSkillHandler, "回声测试")
+default_registry.register("init", InitSkillHandler, "项目初始化")
+default_registry.register("plan", PlanSkillHandler, "大纲规划")
+default_registry.register("write", WriteSkillHandler, "章节写作")
+default_registry.register("review", ReviewSkillHandler, "审查修订")

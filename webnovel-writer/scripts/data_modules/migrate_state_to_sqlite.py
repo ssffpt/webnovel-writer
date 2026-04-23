@@ -30,7 +30,7 @@ import json
 import shutil
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Any
 
 from .config import get_config, DataModulesConfig
 from .sql_state_manager import SQLStateManager, EntityData
@@ -41,7 +41,7 @@ def migrate_state_to_sqlite(
     dry_run: bool = False,
     backup: bool = True,
     verbose: bool = True
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """
     执行迁移
 

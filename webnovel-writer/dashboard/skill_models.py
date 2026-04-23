@@ -71,6 +71,7 @@ class SkillInstance:
     created_at: str = ""
     updated_at: str = ""
     context: dict = field(default_factory=dict)
+    display_name: str = ""  # 中文显示名
 
     # ------------------------------------------------------------------
     # Serialisation
@@ -80,6 +81,7 @@ class SkillInstance:
         return {
             "id": self.id,
             "skill_name": self.skill_name,
+            "display_name": self.display_name,
             "status": self.status,
             "mode": self.mode,
             "project_root": self.project_root,
