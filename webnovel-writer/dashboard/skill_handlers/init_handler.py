@@ -61,11 +61,20 @@ class InitSkillHandler(SkillHandler):
                 "instruction": "请选择一套创意约束包，或提出修改意见",
             }
         if step.step_id == "step_6":
-            # 对于 confirm 类型，execute_step 在 submit_input() 后被调用
-            # input_data 一定有值（用户已确认）
-            self._creation_input = step.input_data or {}
+            # 预执行（无 input_data）：只返回摘要和门禁检查，不创建项目
+            if not step.input_data:
+                gate_result = self._check_sufficiency_gate(context)
+                return {
+                    "gate_passed": gate_result["passed"],
+                    "missing": gate_result.get("missing", []),
+                    "summary": self._build_summary(context),
+                    "instruction": "请确认以上信息，确认后将创建项目",
+                }
+
+            # 真正执行（有 input_data，用户已确认）：创建项目
+            self._creation_input = step.input_data
             self._creation_result = await self._execute_project_creation(
-                {**context, **(step.input_data or {})}
+                {**context, **step.input_data}
             )
 
             if not self._creation_result.get("success"):
@@ -75,7 +84,7 @@ class InitSkillHandler(SkillHandler):
 
             return {
                 "gate_passed": True,
-                "summary": self._build_summary({**context, **(step.input_data or {})}),
+                "summary": self._build_summary({**context, **step.input_data}),
                 "project_root": self._creation_result.get("project_root"),
                 "message": "项目创建成功",
             }

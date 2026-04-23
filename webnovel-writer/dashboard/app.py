@@ -248,6 +248,11 @@ def create_app(project_root: Optional[Union[str, Path]] = None) -> FastAPI:
 
     if project_root:
         _project_root = Path(project_root).resolve()
+    elif _project_root is None:
+        import os
+        env_root = os.environ.get("WEBNOVEL_PROJECT_ROOT")
+        if env_root:
+            _project_root = Path(env_root).resolve()
 
     @asynccontextmanager
     async def _lifespan(_: FastAPI):

@@ -267,7 +267,21 @@ class SkillRunner:
             )
             interaction = step_def.interaction if step_def else "auto"
 
-            if interaction in ("form", "confirm"):
+            if interaction == "confirm":
+                # Pre-execute confirm step so frontend can see output_data (e.g. packages)
+                try:
+                    output_data = await self.handler.execute_step(current, self.instance.context)
+                    current.output_data = output_data
+                except Exception as exc:
+                    logger.warning("pre-execute for confirm step %s failed: %s", current.step_id, exc)
+                current.status = "waiting_input"
+                current.started_at = _now_iso()
+                self.instance.updated_at = _now_iso()
+                _persist_instance(self.instance)
+                _notify_step_change(self.on_step_change, self.instance, current)
+                return
+
+            if interaction == "form":
                 # Wait for user input; stop here.
                 current.status = "waiting_input"
                 current.started_at = _now_iso()
@@ -349,6 +363,12 @@ class SkillRunner:
             "start-step", self.instance, step_name=step_name, step_id=step_id,
         )
 
+        # For confirm steps, execute_step was already called during start() (pre-execute).
+        # We need to re-execute to process the user's selection.
+        # Reset output_data so the handler can re-run cleanly.
+        if step_def and step_def.interaction == "confirm":
+            current.output_data = None
+
         try:
             output_data = await self.handler.execute_step(current, self.instance.context)
             current.output_data = output_data
@@ -390,7 +410,21 @@ class SkillRunner:
             next_def = next(
                 (s for s in self.instance.steps if s.id == next_step.step_id), None,
             )
-            if next_def and next_def.interaction in ("form", "confirm"):
+            if next_def and next_def.interaction == "confirm":
+                # Pre-execute confirm step so frontend can see output_data
+                try:
+                    output_data = await self.handler.execute_step(next_step, self.instance.context)
+                    next_step.output_data = output_data
+                except Exception as exc:
+                    logger.warning("pre-execute for confirm step %s failed: %s", next_step.step_id, exc)
+                next_step.status = "waiting_input"
+                next_step.started_at = _now_iso()
+                self.instance.updated_at = _now_iso()
+                _persist_instance(self.instance)
+                _notify_step_change(self.on_step_change, self.instance, next_step)
+                return
+
+            if next_def and next_def.interaction == "form":
                 # Stop here and wait for more user input.
                 return
 
