@@ -27,10 +27,10 @@ class InitSkillHandler(SkillHandler):
 
     def get_steps(self, mode: str | None = None) -> list[StepDefinition]:
         return [
-            StepDefinition(id="step_1", name="故事核与商业定位", interaction="form"),
-            StepDefinition(id="step_2", name="角色骨架与关系冲突", interaction="form"),
-            StepDefinition(id="step_3", name="金手指与兑现机制", interaction="form"),
-            StepDefinition(id="step_4", name="世界观与力量规则", interaction="form"),
+            StepDefinition(id="step_1", name="故事核与商业定位", interaction="form", schema=INIT_STEP_SCHEMAS["step_1"]),
+            StepDefinition(id="step_2", name="角色骨架与关系冲突", interaction="form", schema=INIT_STEP_SCHEMAS["step_2"]),
+            StepDefinition(id="step_3", name="金手指与兑现机制", interaction="form", schema=INIT_STEP_SCHEMAS["step_3"]),
+            StepDefinition(id="step_4", name="世界观与力量规则", interaction="form", schema=INIT_STEP_SCHEMAS["step_4"]),
             StepDefinition(id="step_5", name="创意约束包", interaction="confirm"),
             StepDefinition(id="step_6", name="一致性复述与确认", interaction="confirm"),
         ]

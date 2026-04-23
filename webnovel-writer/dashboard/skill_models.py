@@ -14,6 +14,7 @@ class StepDefinition:
     name: str
     interaction: str  # "auto" | "form" | "confirm"
     skippable: bool = False
+    schema: dict | None = None  # form 步骤的表单定义
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -25,6 +26,7 @@ class StepDefinition:
             name=data["name"],
             interaction=data["interaction"],
             skippable=data.get("skippable", False),
+            schema=data.get("schema"),
         )
 
 

@@ -68,7 +68,7 @@ function FormStepPanel({ step, onSubmit }) {
   const [formData, setFormData] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
-  const schema = step.output_data?.schema ?? {}
+  const schema = step.schema ?? step.output_data?.schema ?? {}
 
   function handleChange(field, value) {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -245,6 +245,7 @@ function mergeStepsAndStates(steps, stepStates) {
       id: def.id ?? def.step_id,
       name: def.name ?? def.step_id,
       interaction: def.interaction,
+      schema: def.schema ?? null,
       status: state ? normalizeStepStatus(state.status) : 'pending',
       output_data: state?.output_data ?? null,
       progress: state?.progress ?? 0,
