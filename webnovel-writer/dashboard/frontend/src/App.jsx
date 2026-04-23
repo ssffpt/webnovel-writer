@@ -292,10 +292,17 @@ export default function App() {
     setShowWizard(false)
   }, [])
 
-  const handleWizardCompleted = useCallback(() => {
+  const handleWizardCompleted = useCallback((finalState) => {
     setShowWizard(false)
-    loadSummary()
-    fetchProjects().then(r => setProjects(r.projects || []))
+    const projectRoot = finalState?.result?.step_6?.project_root
+    if (projectRoot) {
+      switchProjectAPI(projectRoot)
+        .then(() => loadSummary())
+        .catch(() => loadSummary())
+    } else {
+      loadSummary()
+    }
+    fetchProjects().then(r => setProjects(r.projects || [])).catch(() => {})
   }, [loadSummary])
 
   // --- Effects ---

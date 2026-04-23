@@ -97,7 +97,10 @@ export default function InitWizard({ onCompleted, onCancelled }) {
   const handleStart = async () => {
     setStartError('')
     try {
-      const result = await startSkill('init')
+      const timestamp = Date.now()
+      const result = await startSkill('init', {
+        context: { project_root: `./projects/novel-${timestamp}` }
+      })
       setSkillId(result.id)
     } catch (err) {
       setStartError(err instanceof Error ? err.message : '启动失败')
