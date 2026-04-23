@@ -39,8 +39,8 @@ class EchoSkillHandler(SkillHandler):
         return None
 
 
-class InitSkillHandler(SkillHandler):
-    """Init Skill — placeholder for future implementation."""
+class _InitSkillHandlerPlaceholder(SkillHandler):
+    """Deprecated — use dashboard.skill_handlers.init_handler.InitSkillHandler."""
 
     def get_steps(self, mode: str | None = None) -> list[StepDefinition]:
         return [
