@@ -61,41 +61,25 @@ class InitSkillHandler(SkillHandler):
                 "instruction": "请选择一套创意约束包，或提出修改意见",
             }
         if step.step_id == "step_6":
-            # 对于 confirm 类型，execute_step 会被调用两次：
-            # 第一次（start() 时）：input_data=None，仅生成摘要供确认
-            # 第二次（submit_input() 后）：input_data 有值，此时执行项目创建
-            if step.input_data:
-                # 第二次调用 — 用户已确认，执行项目创建
-                self._creation_input = step.input_data
-                self._creation_result = await self._execute_project_creation(
-                    {**context, **step.input_data}
+            # 对于 confirm 类型，execute_step 在 submit_input() 后被调用
+            # input_data 一定有值（用户已确认）
+            self._creation_input = step.input_data or {}
+            self._creation_result = await self._execute_project_creation(
+                {**context, **(step.input_data or {})}
+            )
+
+            if not self._creation_result.get("success"):
+                raise RuntimeError(
+                    self._creation_result.get("error", "项目创建失败")
                 )
-                step.output_data = {
-                    "gate_passed": True,
-                    "summary": self._build_summary({**context, **step.input_data}),
-                    "project_root": self._creation_result.get("project_root"),
-                    "message": "项目创建成功" if self._creation_result.get("success") else "项目创建完成但有警告",
-                }
-                step.status = "done"
-                step.completed_at = datetime.now().isoformat()
-                step.progress = 1.0
-                return step.output_data
 
-            # 第一次调用 — 生成摘要供用户确认
-            gate_result = self._check_sufficiency_gate(context)
-            if not gate_result["passed"]:
-                return {
-                    "gate_passed": False,
-                    "missing_items": gate_result["missing"],
-                    "instruction": "以下必填项尚未完成，请返回补填",
-                }
-
-            summary = self._build_summary(context)
             return {
                 "gate_passed": True,
-                "summary": summary,
-                "instruction": "请确认以下项目摘要，确认后将创建项目",
+                "summary": self._build_summary({**context, **(step.input_data or {})}),
+                "project_root": self._creation_result.get("project_root"),
+                "message": "项目创建成功",
             }
+
         # Unknown step_id: return empty dict rather than raising.
         return {}
 
@@ -115,9 +99,6 @@ class InitSkillHandler(SkillHandler):
             confirmed = data.get("confirmed", False)
             if not confirmed:
                 return "请确认项目摘要"
-            # 检查项目创建结果（execute_step 第二调用已执行）
-            if self._creation_result and not self._creation_result.get("success"):
-                return f"项目创建失败：{self._creation_result.get('error', '未知错误')}"
             return None
 
         schema = INIT_STEP_SCHEMAS.get(step.step_id)
