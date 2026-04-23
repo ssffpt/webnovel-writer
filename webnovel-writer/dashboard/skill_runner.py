@@ -365,8 +365,9 @@ class SkillRunner:
 
         # For confirm steps, execute_step was already called during start() (pre-execute).
         # We need to re-execute to process the user's selection.
-        # Reset output_data so the handler can re-run cleanly.
+        # Also merge input_data into context so handlers can access it.
         if step_def and step_def.interaction == "confirm":
+            self.instance.context.update(data)
             current.output_data = None
 
         try:
@@ -438,6 +439,34 @@ class SkillRunner:
         self.instance.status = "cancelled"
         self.instance.updated_at = _now_iso()
         _persist_instance(self.instance)
+
+    async def go_back(self, target_step_id: str) -> None:
+        """Go back to a previous step, preserving its input_data.
+
+        Resets all steps after the target to pending and sets the target
+        step to waiting_input so the user can re-edit and re-submit.
+        """
+        if self.instance.is_terminal():
+            return
+        # Find target index
+        target_index = None
+        for i, ss in enumerate(self.instance.step_states):
+            if ss.step_id == target_step_id:
+                target_index = i
+                break
+        if target_index is None:
+            return
+        # Also need to re-merge context: remove input_data from steps after target
+        # so that re-submission starts clean from the target step
+        for i in range(target_index + 1, len(self.instance.step_states)):
+            ss = self.instance.step_states[i]
+            if ss.input_data:
+                # Remove these keys from context if they were merged
+                for key in ss.input_data:
+                    self.instance.context.pop(key, None)
+        self.instance.go_back(target_index)
+        _persist_instance(self.instance)
+        _notify_step_change(self.on_step_change, self.instance, self.instance.current_step())
 
     def get_state(self) -> dict:
         """Return the full SkillInstance serialised as a plain dict (for API responses)."""

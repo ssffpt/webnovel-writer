@@ -56,6 +56,62 @@ def _get_project_root() -> Path:
     return _project_root
 
 
+async def _restore_active_skills() -> None:
+    """Scan .webnovel/workflow/instances/ and restore non-terminal Skill instances.
+
+    Called during app startup so that in-progress workflows (e.g. project init)
+    survive server restarts.
+    """
+    if _project_root is None:
+        return
+    instances_dir = _project_root / ".webnovel" / "workflow" / "instances"
+    if not instances_dir.is_dir():
+        return
+
+    from .skill_models import SkillInstance, TERMINAL_STATUSES
+
+    for json_path in sorted(instances_dir.glob("*.json")):
+        try:
+            data = json.loads(json_path.read_text(encoding="utf-8"))
+            instance = SkillInstance.from_dict(data)
+        except Exception as exc:
+            logger.warning("skip invalid skill instance %s: %s", json_path.name, exc)
+            continue
+
+        if instance.status in TERMINAL_STATUSES:
+            continue
+
+        try:
+            handler = default_registry.get_handler(instance.skill_name)
+        except KeyError:
+            logger.warning("skip skill instance %s: handler '%s' not registered", instance.id, instance.skill_name)
+            continue
+
+        # Rebuild context from completed steps' input_data
+        # (confirm steps' input_data is not merged into context by default on restore)
+        for ss in instance.step_states:
+            if ss.input_data and ss.status in ("done", "completed"):
+                instance.context.update(ss.input_data)
+
+        # For confirm steps at waiting_input, re-pre-execute to refresh output_data
+        current = instance.current_step()
+        if current and current.status == "waiting_input":
+            step_def = next((s for s in instance.steps if s.id == current.step_id), None)
+            if step_def and step_def.interaction == "confirm":
+                try:
+                    output_data = await handler.execute_step(current, instance.context)
+                    current.output_data = output_data
+                except Exception as exc:
+                    logger.warning("re-pre-execute for %s failed: %s", current.step_id, exc)
+
+        # Rebuild the on_step_change callback so SSE continues to work
+        on_step_change = _make_skill_on_step_change(instance.id, instance.skill_name)
+        runner = SkillRunner(instance, handler, on_step_change=on_step_change)
+        runner._started = True  # mark as already started so start() won't re-initialise
+        _active_skills[instance.id] = runner
+        logger.info("restored skill instance %s (status=%s, step=%s)", instance.id, instance.status, instance.current_step_index)
+
+
 def _webnovel_dir() -> Path:
     return _get_project_root() / ".webnovel"
 
@@ -242,6 +298,40 @@ async def list_active_skills() -> dict:
     return {"instances": [r.get_state() for r in _active_skills.values()]}
 
 
+async def go_back_skill(skill_id: str, target_step_id: str) -> dict:
+    """POST /api/skill/{skill_id}/back — 回退到指定步骤。"""
+    runner = _active_skills.get(skill_id)
+    if runner is None:
+        raise HTTPException(404, "Skill 实例不存在")
+    await runner.go_back(target_step_id)
+    return runner.get_state()
+
+
+async def list_pending_skills(skill_name: str | None = None) -> dict:
+    """GET /api/skill/pending — 返回未完成的 Skill 实例列表。"""
+    results = []
+    for skill_id, runner in _active_skills.items():
+        instance = runner.instance
+        if instance.is_terminal():
+            continue
+        if skill_name and instance.skill_name != skill_name:
+            continue
+        current = instance.current_step()
+        results.append({
+            "id": instance.id,
+            "skill_name": instance.skill_name,
+            "display_name": instance.display_name,
+            "status": instance.status,
+            "current_step_index": instance.current_step_index,
+            "current_step_id": current.step_id if current else None,
+            "current_step_status": current.status if current else None,
+            "total_steps": len(instance.step_states),
+            "completed_steps": sum(1 for s in instance.step_states if s.status in ("done", "completed")),
+            "updated_at": instance.updated_at,
+        })
+    return {"instances": results}
+
+
 # ---------------------------------------------------------------------------
 # 应用工厂
 # ---------------------------------------------------------------------------
@@ -256,6 +346,13 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
         env_root = os.environ.get("WEBNOVEL_PROJECT_ROOT")
         if env_root:
             _project_root = Path(env_root).resolve()
+        else:
+            # Try to restore last used project from workspaces.json
+            from .project_service import _read_workspaces
+            registry = _read_workspaces()
+            last_used = registry.get("last_used_project_root")
+            if last_used and Path(last_used).is_dir():
+                _project_root = Path(last_used).resolve()
 
     @asynccontextmanager
     async def _lifespan(_: FastAPI):
@@ -264,6 +361,7 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
             webnovel = _project_root / ".webnovel"
             if webnovel.is_dir():
                 _watcher.start(webnovel, asyncio.get_running_loop())
+            await _restore_active_skills()
         try:
             yield
         finally:
@@ -285,9 +383,11 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
     @app.get("/api/project/info")
     def project_info():
         """返回 state.json 完整内容（只读）。"""
+        if _project_root is None:
+            return {"title": None, "genre": None}
         state_path = _webnovel_dir() / "state.json"
         if not state_path.is_file():
-            raise HTTPException(404, "state.json 不存在")
+            return {"title": None, "genre": None}
         return json.loads(state_path.read_text(encoding="utf-8"))
 
     @app.get("/api/query/foreshadowing")
@@ -749,6 +849,10 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
         from fastapi.responses import JSONResponse
         return JSONResponse(content=result)
 
+    @app.get("/api/skill/pending")
+    async def _list_pending_skills(skill_name: str | None = None):
+        return await list_pending_skills(skill_name)
+
     @app.get("/api/skill/{skill_id}/status")
     async def _get_skill_status(skill_id: str):
         return await get_skill_status(skill_id)
@@ -760,6 +864,13 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
     @app.post("/api/skill/{skill_id}/cancel")
     async def _cancel_skill(skill_id: str):
         return await cancel_skill(skill_id)
+
+    @app.post("/api/skill/{skill_id}/back")
+    async def _go_back_skill(skill_id: str, payload: dict):
+        target_step_id = payload.get("step_id", "")
+        if not target_step_id:
+            raise HTTPException(400, "step_id 必填")
+        return await go_back_skill(skill_id, target_step_id)
 
     @app.get("/api/skill/active")
     async def _list_active_skills():
@@ -861,7 +972,7 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
         """Server-Sent Events 端点，推送文件变更、任务状态、Skill 步骤和 RAG 构建进度。"""
         file_q = _watcher.subscribe()
         task_q = _task_service.subscribe_events()
-        skill_q = subscribe_skill_events()
+        skill_q = await subscribe_skill_events()
         # RAG 构建事件队列
         rag_q: asyncio.Queue = asyncio.Queue(maxsize=128)
         _rag_subscribers.append(rag_q)

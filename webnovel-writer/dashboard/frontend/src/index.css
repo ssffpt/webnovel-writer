@@ -2573,6 +2573,16 @@ body {
   border-bottom-color: var(--accent-green);
 }
 
+.skill-flow-step-item.clickable {
+  cursor: pointer;
+}
+
+.skill-flow-step-item.clickable:hover {
+  background: rgba(46, 194, 126, 0.08);
+  border-bottom-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
 .skill-flow-step-marker {
   font-size: 16px;
 }
@@ -2703,13 +2713,13 @@ body {
 }
 
 .skill-flow-tag:hover {
-  border-color: var(--accent-main);
+  border-color: var(--accent-purple);
 }
 
 .skill-flow-tag--selected {
-  background: var(--accent-main);
+  background: var(--accent-purple);
   color: #fff;
-  border-color: var(--accent-main);
+  border-color: var(--accent-purple);
 }
 
 /* Packages in confirm step */
@@ -2726,6 +2736,45 @@ body {
   border-radius: 8px;
   padding: 12px 16px;
   background: #fffef8;
+  transition: all 0.15s ease;
+}
+
+.skill-flow-package-card--selected {
+  border-color: var(--accent-purple);
+  background: #f3eeff;
+  box-shadow: 0 0 0 2px var(--accent-purple);
+}
+
+.skill-flow-package-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.skill-flow-radio {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-soft);
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.skill-flow-radio--checked {
+  border-color: var(--accent-purple);
+}
+
+.skill-flow-radio--checked::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-purple);
 }
 
 .skill-flow-package-card h4 {
@@ -2760,6 +2809,18 @@ body {
 .skill-flow-cancel-btn {
   font-size: 12px;
   color: var(--text-mute);
+}
+
+/* Init wizard resume */
+.init-wizard-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+.init-wizard-resume-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 /* Gate warning */

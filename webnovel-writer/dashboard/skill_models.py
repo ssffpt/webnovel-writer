@@ -2,10 +2,15 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from typing import Any
 
 
 TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
+
+
+def _now_iso() -> str:
+    return datetime.now().isoformat()
 
 
 @dataclass
@@ -103,6 +108,7 @@ class SkillInstance:
         return cls(
             id=data["id"],
             skill_name=data["skill_name"],
+            display_name=data.get("display_name", ""),
             status=data["status"],
             mode=data.get("mode"),
             project_root=data.get("project_root", ""),
@@ -144,6 +150,29 @@ class SkillInstance:
             else:
                 self.step_states[self.current_step_index].status = "pending"
         return True
+
+    def go_back(self, target_index: int) -> None:
+        """Reset to a previous step, keeping input_data intact.
+
+        Sets all steps after target_index back to pending,
+        and sets the target step to waiting_input.
+        """
+        if target_index < 0 or target_index >= len(self.step_states):
+            return
+        if target_index >= self.current_step_index:
+            return
+        # Reset steps after target to pending
+        for i in range(target_index + 1, len(self.step_states)):
+            self.step_states[i].status = "pending"
+            self.step_states[i].output_data = None
+            self.step_states[i].error = None
+            self.step_states[i].progress = 0.0
+        # Set target step back to waiting_input
+        self.step_states[target_index].status = "waiting_input"
+        self.step_states[target_index].output_data = None
+        self.step_states[target_index].error = None
+        self.current_step_index = target_index
+        self.updated_at = _now_iso()
 
     def is_terminal(self) -> bool:
         """Return True when status is completed / failed / cancelled."""

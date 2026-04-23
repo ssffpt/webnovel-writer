@@ -46,6 +46,9 @@ class InitSkillHandler(SkillHandler):
             context.update(step.input_data or {})
             return {"merged_fields": list((step.input_data or {}).keys())}
         if step.step_id == "step_5":
+            # When user has confirmed (input_data present), merge selected_package_id into context
+            if step.input_data and step.input_data.get("selected_package_id"):
+                context["selected_package_id"] = step.input_data["selected_package_id"]
             # Extract key information from previous 4 steps
             packages = await self._generate_creativity_packages(
                 title=context.get("title", ""),
@@ -114,7 +117,14 @@ class InitSkillHandler(SkillHandler):
         if not schema:
             return None
         for field in schema["fields"]:
-            if field.get("required") and not data.get(field["name"]):
+            if not field.get("required"):
+                continue
+            # Skip required check if field is hidden by hide_when
+            hide_when = field.get("hide_when")
+            if hide_when:
+                if all(data.get(k) == v for k, v in hide_when.items()):
+                    continue
+            if not data.get(field["name"]):
                 return f"{field['label']}不能为空"
         return None
 

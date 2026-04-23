@@ -1,23 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getSkillStatus, submitSkillStep, cancelSkill } from '../api.js'
+import { getSkillStatus, submitSkillStep, cancelSkill, goBackSkill } from '../api.js'
 
 // --- Step Progress Bar ---
 
-function StepIndicator({ steps }) {
+function StepIndicator({ steps, onStepClick }) {
   return (
     <div className="skill-flow-step-bar">
-      {steps.map((step, i) => (
-        <div
-          key={step.id}
-          className={`skill-flow-step-item ${step.status === 'completed' ? 'completed' : ''} ${step.status === 'running' ? 'running' : ''}`}
-        >
-          <span className="skill-flow-step-marker">
-            {step.status === 'completed' ? '\u2713' : step.status === 'running' ? '\u25CF' : '\u25CB'}
-          </span>
-          <span className="skill-flow-step-label">{step.name}</span>
-          {i < steps.length - 1 && <span className="skill-flow-step-connector" />}
-        </div>
-      ))}
+      {steps.map((step, i) => {
+        const isCompleted = step.status === 'completed'
+        const isClickable = isCompleted && onStepClick
+        return (
+          <div
+            key={step.id}
+            className={`skill-flow-step-item ${step.status === 'completed' ? 'completed' : ''} ${step.status === 'running' ? 'running' : ''} ${isClickable ? 'clickable' : ''}`}
+            onClick={isClickable ? () => onStepClick(step.id) : undefined}
+            role={isClickable ? 'button' : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+          >
+            <span className="skill-flow-step-marker">
+              {step.status === 'completed' ? '\u2713' : step.status === 'running' ? '\u25CF' : '\u25CB'}
+            </span>
+            <span className="skill-flow-step-label">{step.name}</span>
+            {i < steps.length - 1 && <span className="skill-flow-step-connector" />}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -64,7 +71,7 @@ function AutoStepPanel({ step }) {
 
 // --- Form Step Panel ---
 
-function FormStepPanel({ step, onSubmit }) {
+function FormStepPanel({ step, onSubmit, onGoBack, canGoBack }) {
   const [formData, setFormData] = useState(() => {
     // 回显已提交的数据（从 input_data 恢复）
     const saved = step.input_data ?? {}
@@ -104,6 +111,11 @@ function FormStepPanel({ step, onSubmit }) {
   const fields = schema.fields ?? []
   const isLastStep = false // 将由父组件传入
 
+  function isFieldHidden(field) {
+    if (!field.hide_when) return false
+    return Object.entries(field.hide_when).every(([key, val]) => formData[key] === val)
+  }
+
   return (
     <div className="skill-flow-step-panel skill-flow-step-panel--form">
       <h4 className="skill-flow-step-title">{step.name || step.id}</h4>
@@ -111,7 +123,7 @@ function FormStepPanel({ step, onSubmit }) {
         {fields.length === 0 && (
           <p className="skill-flow-no-fields">该步骤没有表单字段</p>
         )}
-        {fields.map(field => (
+        {fields.filter(f => !isFieldHidden(f)).map(field => (
           <div key={field.name} className="skill-flow-form-field">
             <label className="skill-flow-form-label">
               {field.label || field.name}
@@ -183,6 +195,16 @@ function FormStepPanel({ step, onSubmit }) {
         ))}
         {formError && <p className="error-text">{formError}</p>}
         <div className="skill-flow-form-actions">
+          {canGoBack && (
+            <button
+              type="button"
+              className="workbench-primary-button workbench-primary-button--secondary"
+              onClick={onGoBack}
+              disabled={submitting}
+            >
+              上一步
+            </button>
+          )}
           <button
             type="submit"
             className="workbench-primary-button"
@@ -199,20 +221,32 @@ function FormStepPanel({ step, onSubmit }) {
 // --- Confirm Step Panel ---
 
 function ConfirmStepPanel({ step, onConfirm, onCancel, confirming }) {
+  const packages = step.output_data?.packages ?? []
+  const hasPackages = packages.length > 0
+  // Auto-select when there's only one package
+  const [selectedPkgId, setSelectedPkgId] = useState(() =>
+    packages.length === 1 ? packages[0].id : null
+  )
+
   return (
     <div className="skill-flow-step-panel skill-flow-step-panel--confirm">
       <h4 className="skill-flow-step-title">{step.name || step.id}</h4>
       {step.output_data?.instruction && (
         <p className="skill-flow-confirm-message">{step.output_data.instruction}</p>
       )}
-      {step.output_data?.summary && (
-        <pre className="skill-flow-confirm-result">{step.output_data.summary}</pre>
-      )}
-      {step.output_data?.packages && (
+      {hasPackages && (
         <div className="skill-flow-packages">
-          {step.output_data.packages.map(pkg => (
-            <div key={pkg.id} className="skill-flow-package-card">
-              <h4>{pkg.name}</h4>
+          {packages.map(pkg => (
+            <div
+              key={pkg.id}
+              className={`skill-flow-package-card ${selectedPkgId === pkg.id ? 'skill-flow-package-card--selected' : ''}`}
+              onClick={() => setSelectedPkgId(pkg.id)}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="skill-flow-package-select-row">
+                <span className={`skill-flow-radio ${selectedPkgId === pkg.id ? 'skill-flow-radio--checked' : ''}`} />
+                <h4>{pkg.name}</h4>
+              </div>
               <p>{pkg.description}</p>
               {pkg.constraints && (
                 <ul className="skill-flow-constraints">
@@ -225,7 +259,10 @@ function ConfirmStepPanel({ step, onConfirm, onCancel, confirming }) {
           ))}
         </div>
       )}
-      {step.output_data?.message && !step.output_data?.summary && !step.output_data?.packages && (
+      {step.output_data?.summary && (
+        <pre className="skill-flow-confirm-result">{step.output_data.summary}</pre>
+      )}
+      {step.output_data?.message && !step.output_data?.summary && !hasPackages && (
         <p className="skill-flow-confirm-message">{step.output_data.message}</p>
       )}
       {step.output_data?.result != null && !step.output_data?.summary && (
@@ -243,7 +280,7 @@ function ConfirmStepPanel({ step, onConfirm, onCancel, confirming }) {
       <div className="skill-flow-confirm-actions">
         <button
           type="button"
-          className="workbench-nav-button"
+          className="workbench-primary-button workbench-primary-button--secondary"
           onClick={onCancel}
           disabled={confirming}
         >
@@ -252,8 +289,8 @@ function ConfirmStepPanel({ step, onConfirm, onCancel, confirming }) {
         <button
           type="button"
           className="workbench-primary-button"
-          onClick={onConfirm}
-          disabled={confirming}
+          onClick={() => onConfirm({ confirmed: true, selected_package_id: selectedPkgId || (hasPackages ? undefined : 'pkg_fallback') })}
+          disabled={confirming || (hasPackages && !selectedPkgId)}
         >
           {confirming ? '处理中...' : '确认'}
         </button>
@@ -463,8 +500,15 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
           error: s.error ?? null,
         })
       })
-      .catch(() => {
-        // If status fetch fails, just wait for SSE events
+      .catch((err) => {
+        // If skill instance not found (e.g. server restart), show error instead of infinite loading
+        if (err?.message?.startsWith('404')) {
+          setState(prev => ({
+            ...prev,
+            status: 'failed',
+            error: '流程实例不存在（可能服务已重启）',
+          }))
+        }
       })
 
     // Poll as fallback (every 2s) in case SSE misses events
@@ -490,8 +534,16 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
         if (s.status === 'completed' || s.status === 'failed' || s.status === 'cancelled') {
           clearInterval(pollIntervalRef.current)
         }
-      } catch {
-        // Ignore polling errors
+      } catch (err) {
+        // Stop polling on 404 — skill instance no longer exists (e.g. server restart)
+        if (err?.message?.startsWith('404')) {
+          clearInterval(pollIntervalRef.current)
+          setState(prev => prev.status === 'loading' ? {
+            ...prev,
+            status: 'failed',
+            error: '流程实例不存在（可能服务已重启）',
+          } : prev)
+        }
       }
     }, 2000)
 
@@ -530,13 +582,22 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
     if (!state.currentStep) return
     setConfirming(true)
     try {
-      await submitSkillStep(skillId, state.currentStep.id, { confirmed: true })
+      // ConfirmStepPanel passes data via onConfirm, we use a ref to capture it
+      const data = confirmDataRef.current || { confirmed: true }
+      await submitSkillStep(skillId, state.currentStep.id, data)
     } catch (err) {
       // Error shown in form panel
     } finally {
       setConfirming(false)
     }
   }, [skillId, state.currentStep])
+
+  const confirmDataRef = useRef({ confirmed: true })
+
+  const handleConfirmWithData = useCallback((data) => {
+    confirmDataRef.current = data
+    handleConfirm()
+  }, [handleConfirm])
 
   const handleCancelStep = useCallback(async () => {
     try {
@@ -545,6 +606,26 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
       // Already cancelled or failed; state will update via SSE/poll
     }
   }, [skillId])
+
+  const handleGoBack = useCallback(async (targetStepId) => {
+    if (!skillId) return
+    try {
+      const data = await goBackSkill(skillId, targetStepId || state.currentStep?.id)
+      const s = data.skill ?? data
+      const mergedSteps = mergeStepsAndStates(s.steps ?? [], s.step_states ?? [])
+      const current = mergedSteps.find(
+        step => step.status === 'running' || step.status === 'waiting_input'
+      ) || null
+      setState(prev => ({
+        ...prev,
+        steps: mergedSteps,
+        currentStep: current,
+        skillName: s.display_name || s.skill_name || prev.skillName,
+      }))
+    } catch {
+      // Ignore errors
+    }
+  }, [skillId, state.currentStep])
 
   // Loading state
   if (!skillId) {
@@ -568,17 +649,22 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
 
   const currentStep = state.currentStep
   const stepMode = currentStep ? inferMode(currentStep) : 'auto'
+  const currentStepIndex = state.steps.findIndex(s => s.id === currentStep?.id)
+  const canGoBack = currentStepIndex > 0
 
   // Check for custom step renderer first
   const CustomRenderer = currentStep && stepRenderers?.[currentStep.id]
 
+  // Find the step_id of the previous step for "上一步" button
+  const prevStepId = canGoBack ? state.steps[currentStepIndex - 1]?.id : null
+
   return (
     <div className="workbench-panel skill-flow-panel">
       <div className="skill-flow-header">
-        <h3 className="skill-flow-title">\u6b63\u5728\u6267\u884c\uff1a{state.skillName}</h3>
+        <h3 className="skill-flow-title">{state.skillName}</h3>
       </div>
 
-      <StepIndicator steps={state.steps} />
+      <StepIndicator steps={state.steps} onStepClick={(stepId) => handleGoBack(stepId)} />
 
       {state.status === 'completed' && <CompletedPanel result={state.result} />}
 
@@ -600,13 +686,18 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
             <>
               {stepMode === 'auto' && <AutoStepPanel step={currentStep} />}
               {stepMode === 'form' && (
-                <FormStepPanel step={currentStep} onSubmit={handleSubmitForm} />
+                <FormStepPanel
+                  step={currentStep}
+                  onSubmit={handleSubmitForm}
+                  onGoBack={() => handleGoBack(prevStepId)}
+                  canGoBack={canGoBack}
+                />
               )}
               {stepMode === 'confirm' && (
                 <ConfirmStepPanel
                   step={currentStep}
-                  onConfirm={handleConfirm}
-                  onCancel={handleCancelStep}
+                  onConfirm={handleConfirmWithData}
+                  onCancel={() => handleGoBack(prevStepId)}
                   confirming={confirming}
                 />
               )}
@@ -621,7 +712,7 @@ export default function SkillFlowPanel({ skillId, stepRenderers, onCompleted, on
         {state.status === 'active' && (
           <button
             type="button"
-            className="workbench-nav-button skill-flow-cancel-btn"
+            className="workbench-primary-button workbench-primary-button--secondary skill-flow-cancel-btn"
             onClick={handleCancelStep}
           >
             取消流程

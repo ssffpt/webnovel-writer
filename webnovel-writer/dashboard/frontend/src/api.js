@@ -116,6 +116,15 @@ export function cancelSkill(skillId) {
     return postJSON(`/api/skill/${skillId}/cancel`);
 }
 
+export function fetchPendingSkills(skillName) {
+    const params = skillName ? `?skill_name=${encodeURIComponent(skillName)}` : '';
+    return fetchJSON(`/api/skill/pending${params}`);
+}
+
+export function goBackSkill(skillId, stepId) {
+    return postJSON(`/api/skill/${skillId}/back`, { step_id: stepId });
+}
+
 // --- Query API（Phase 5）---
 export function fetchForeshadowing() {
   return fetchJSON('/api/query/foreshadowing');
