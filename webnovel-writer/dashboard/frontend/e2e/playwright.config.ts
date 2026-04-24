@@ -1,12 +1,13 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  fullyParallel: false,  // init wizard tests need sequential execution
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: [['html', { outputFolder: 'e2e/reports' }], ['list']],
+  workers: 1,
+  timeout: 60_000,
+  reporter: [['list']],
 
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:5173',
@@ -16,34 +17,23 @@ export default defineConfig({
   },
 
   projects: [
-    // Smoke tests — critical path only (no auth required)
     {
-      name: 'chromium:smoke',
+      name: 'chromium',
       use: {
-        executablePath: '/Users/liushuang/Library/Caches/ms-playwright/chromium-1208/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
-        viewport: { width: 1440, height: 900 },
         browserName: 'chromium',
+        viewport: { width: 1440, height: 900 },
       },
       testMatch: /.*\.spec\.ts/,
-      testIgnore: [/regression/, /handover/],
-    },
-
-    // Regression tests — full suite
-    {
-      name: 'chromium:regression',
-      use: {
-        executablePath: '/Users/liushuang/Library/Caches/ms-playwright/chromium-1208/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
-        viewport: { width: 1440, height: 900 },
-        browserName: 'chromium',
-      },
-      testMatch: /.*regression.*\.spec\.ts/,
     },
   ],
 
+  // E2E tests need both Vite dev server (5173) and FastAPI backend (8765).
+  // The Vite proxy forwards /api/* to 8765.
+  // We only start the Vite dev server here; the backend must be started separately.
   webServer: {
-    command: 'cd .. && npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    command: 'npm run dev',
+    port: 5173,
+    reuseExistingServer: true,
+    timeout: 30_000,
   },
 })
