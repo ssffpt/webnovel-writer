@@ -197,3 +197,39 @@ export function buildChatReplyModel(response, fallbackContext = null) {
     suggestedActions: response?.suggested_actions ?? [],
   }
 }
+
+// --- OutlinePage helpers (mirrored from OutlinePage.jsx) ---
+
+export const OUTLINE_FIXED_NODES = [
+  { key: 'master', label: '总纲', path: '大纲/总纲.md' },
+  { key: 'highlights', label: '爽点规划', path: '大纲/爽点规划.md' },
+]
+
+export function volumeLabel(vol) {
+  return `第${vol.number}卷`
+}
+
+export function volumeRangeText(vol) {
+  if (!vol.chapter_range) return ''
+  const [start, end] = vol.chapter_range
+  return `${start}-${end}章`
+}
+
+// --- ChapterPage helpers (mirrored from ChapterPage.jsx) ---
+
+export function flattenFiles(nodes = []) {
+  const files = []
+  for (const node of nodes) {
+    if (node.type === 'file') {
+      files.push(node)
+    } else if (node.type === 'dir') {
+      files.push(...flattenFiles(node.children || []))
+    }
+  }
+  return files
+}
+
+export function extractChapterNumber(fileName = '') {
+  const match = String(fileName).match(/(\d+)/)
+  return match ? Number(match[1]) : null
+}

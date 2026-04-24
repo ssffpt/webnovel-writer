@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 
 // Mock the api module
-vi.mock('../api.js', () => ({
+vi.mock('@/api.js', () => ({
   startSkill: vi.fn(),
   submitSkillStep: vi.fn(),
   getSkillStatus: vi.fn(),
@@ -12,17 +12,17 @@ vi.mock('../api.js', () => ({
 }))
 
 // Mock SkillFlowPanel
-vi.mock('./SkillFlowPanel.jsx', () => ({
+vi.mock('@/workbench/SkillFlowPanel.jsx', () => ({
   default: function MockSkillFlowPanel({ skillId, stepRenderers, onCompleted, onCancelled }) {
     return <div data-testid="skill-flow-panel" data-skill-id={skillId} />
   },
 }))
 
 // Import named exports before mocking
-import { CriticalIssuesDecision, ReviewReportConfirm, ReviewProgressDisplay } from './ReviewFlow.jsx'
-import RadarChart from './RadarChart.jsx'
-import { startSkill } from '../api.js'
-import ReviewFlow from './ReviewFlow.jsx'
+import { CriticalIssuesDecision, ReviewReportConfirm, ReviewProgressDisplay } from '@/workbench/ReviewFlow.jsx'
+import RadarChart from '@/workbench/RadarChart.jsx'
+import { startSkill } from '@/api.js'
+import ReviewFlow from '@/workbench/ReviewFlow.jsx'
 
 describe('ReviewFlow', () => {
   beforeEach(() => {

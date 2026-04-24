@@ -35,5 +35,8 @@ export default defineConfig({
     port: 5173,
     reuseExistingServer: true,
     timeout: 30_000,
+    env: {
+      VITE_API_PROXY_TARGET: 'http://127.0.0.1:8765',
+    },
   },
 })

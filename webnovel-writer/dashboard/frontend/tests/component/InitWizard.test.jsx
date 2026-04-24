@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 
 // Mock the api module
-vi.mock('../api.js', () => ({
+vi.mock('@/api.js', () => ({
   startSkill: vi.fn(),
   submitSkillStep: vi.fn(),
   getSkillStatus: vi.fn(),
@@ -12,15 +12,15 @@ vi.mock('../api.js', () => ({
 }))
 
 // Mock SkillFlowPanel
-vi.mock('./SkillFlowPanel.jsx', () => ({
+vi.mock('@/workbench/SkillFlowPanel.jsx', () => ({
   default: function MockSkillFlowPanel({ skillId, stepRenderers, onCompleted, onCancelled }) {
     return null
   },
 }))
 
-import { startSkill, submitSkillStep } from '../api.js'
-import InitWizard from './InitWizard.jsx'
-import * as InitWizardModule from './InitWizard.jsx'
+import { startSkill, submitSkillStep } from '@/api.js'
+import InitWizard from '@/workbench/InitWizard.jsx'
+import * as InitWizardModule from '@/workbench/InitWizard.jsx'
 
 describe('InitWizard', () => {
   beforeEach(() => {
@@ -42,7 +42,7 @@ describe('InitWizard', () => {
     render(<InitWizard onCompleted={vi.fn()} onCancelled={vi.fn()} />)
     const btn = screen.getByRole('button', { name: /\u5f00\u59cb\u521b\u5efa/i })
     await user.click(btn)
-    expect(startSkill).toHaveBeenCalledWith('init')
+    expect(startSkill).toHaveBeenCalledWith('init', expect.any(Object))
   })
 
   // --- Error Case ---

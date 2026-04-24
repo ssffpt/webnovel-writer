@@ -1,21 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchOutlineTree, readFile, saveFile } from '../api.js'
+import { OUTLINE_FIXED_NODES, volumeLabel, volumeRangeText } from './data.js'
 import PlanFlow from './PlanFlow.jsx'
-
-const FIXED_NODES = [
-  { key: 'master', label: '总纲', path: '大纲/总纲.md' },
-  { key: 'highlights', label: '爽点规划', path: '大纲/爽点规划.md' },
-]
-
-function volumeLabel(vol) {
-  return `第${vol.number}卷`
-}
-
-function volumeRangeText(vol) {
-  if (!vol.chapter_range) return ''
-  const [start, end] = vol.chapter_range
-  return `${start}-${end}章`
-}
 
 export default function OutlinePage({
   loading,
@@ -55,7 +41,7 @@ export default function OutlinePage({
         if (cachedSelectedPath) {
           setSelectedPath(current => current ?? cachedSelectedPath)
         } else {
-          setSelectedPath(current => current ?? FIXED_NODES[0].path)
+          setSelectedPath(current => current ?? OUTLINE_FIXED_NODES[0].path)
         }
       } catch (error) {
         if (!active) return
@@ -103,7 +89,7 @@ export default function OutlinePage({
   // Build a display name for the selected file
   const selectedLabel = useMemo(() => {
     if (!selectedPath) return null
-    const fixed = FIXED_NODES.find(n => n.path === selectedPath)
+    const fixed = OUTLINE_FIXED_NODES.find(n => n.path === selectedPath)
     if (fixed) return fixed.label
     const vol = treeData.volumes?.find(v => v.outline_path === selectedPath)
     if (vol) return `${volumeLabel(vol)} 详细大纲`
@@ -198,7 +184,7 @@ export default function OutlinePage({
         <aside className="outline-tree workbench-panel">
           <h3>大纲结构</h3>
           <ul className="outline-tree-list">
-            {FIXED_NODES.map(node => (
+            {OUTLINE_FIXED_NODES.map(node => (
               <li key={node.key}>
                 <button
                   type="button"

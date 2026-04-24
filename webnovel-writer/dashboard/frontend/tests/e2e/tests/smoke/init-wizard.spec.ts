@@ -19,6 +19,24 @@ import { test, expect } from '@playwright/test'
 
 const API_BASE = 'http://127.0.0.1:8765/api'
 
+// ---- Setup: clean up existing init skills before each test ----
+
+test.beforeEach(async ({ request }) => {
+  // Cancel all pending/running init skills to ensure clean state
+  try {
+    const resp = await request.get(`${API_BASE}/skill/pending?skill_name=init`)
+    if (resp.ok()) {
+      const data = await resp.json()
+      const instances = data.instances || []
+      for (const inst of instances) {
+        try {
+          await request.post(`${API_BASE}/skill/${inst.id}/cancel`)
+        } catch {}
+      }
+    }
+  } catch {}
+})
+
 // ---- Helpers ----
 
 async function waitForStep(page, stepName: string) {
@@ -53,21 +71,40 @@ async function navigateToInitWizard(page) {
   await page.goto('/')
   await page.waitForLoadState('domcontentloaded')
 
-  // Use getByRole for more reliable button detection
-  try {
-    await page.getByRole('button', { name: /开始创建/ }).click({ timeout: 10000 })
+  // Try clicking "开始创建" — this may be on the InitWizard StartScreen
+  // or on the OverviewPage (EmptyState / IncompleteState)
+  const startBtn = page.getByRole('button', { name: /开始创建/ })
+  if (await startBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await startBtn.click()
+    // Wait for SkillFlowPanel to render (the step heading appears)
+    await page.locator('h3, h4, .skill-flow-step-title').first().waitFor({ timeout: 20000 })
     return
-  } catch {}
+  }
 
-  try {
-    await page.getByRole('button', { name: /继续设置/ }).click({ timeout: 5000 })
+  // Fallback: click "继续设置" (IncompleteState)
+  const resumeBtn = page.getByRole('button', { name: /继续设置/ })
+  if (await resumeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await resumeBtn.click()
+    // This opens InitWizard StartScreen; now click "开始创建" or "继续上次配置"
+    await page.locator('h2, h3, h4, .skill-flow-step-title').first().waitFor({ timeout: 15000 })
+    // If we're on the StartScreen, click "开始创建" or "继续上次配置"
+    const startBtn2 = page.getByRole('button', { name: /开始创建/ })
+    const resumeBtn2 = page.getByRole('button', { name: /继续上次配置/ })
+    if (await startBtn2.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await startBtn2.click()
+    } else if (await resumeBtn2.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await resumeBtn2.click()
+    }
+    await page.locator('h3, h4, .skill-flow-step-title').first().waitFor({ timeout: 20000 })
     return
-  } catch {}
+  }
 
-  try {
-    await page.getByRole('button', { name: /创建新小说/ }).click({ timeout: 5000 })
-    return
-  } catch {}
+  // Fallback: click "创建新小说" (EmptyState)
+  const createBtn = page.getByRole('button', { name: /创建新小说/ })
+  if (await createBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await createBtn.click()
+    await page.locator('h2, h3, h4, .skill-flow-step-title').first().waitFor({ timeout: 15000 })
+  }
 }
 
 async function fillSteps1to4(page, bookTitle: string) {
@@ -115,10 +152,13 @@ test('complete 6-step init wizard flow', async ({ page }) => {
   await waitForStep(page, '项目摘要')
   const summary = page.locator('pre').first()
   await expect(summary).toBeVisible()
+
+  // Click "确认创建" and wait for the API response (project creation may take time)
   await page.locator('button', { hasText: '确认创建' }).click()
 
-  // Verify completion
-  await expect(page.locator('.skill-flow-completed-panel')).toBeVisible({ timeout: 15000 })
+  // Wait for completion — project creation involves running init_project.py
+  // which may take up to 60 seconds
+  await expect(page.locator('.skill-flow-completed-panel')).toBeVisible({ timeout: 60_000 })
 })
 
 // ============================================================

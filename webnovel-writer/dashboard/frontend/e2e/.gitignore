@@ -1,8 +1,0 @@
-.auth/
-.env.local
-.env.dev
-.env.test
-.env.uat
-.env.production
-*.png
-*.mp4

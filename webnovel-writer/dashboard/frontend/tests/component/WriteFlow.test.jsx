@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 
 // Mock the api module
-vi.mock('../api.js', () => ({
+vi.mock('@/api.js', () => ({
   startSkill: vi.fn(),
   submitSkillStep: vi.fn(),
   getSkillStatus: vi.fn(),
@@ -12,15 +12,15 @@ vi.mock('../api.js', () => ({
 }))
 
 // Mock SkillFlowPanel
-vi.mock('./SkillFlowPanel.jsx', () => ({
+vi.mock('@/workbench/SkillFlowPanel.jsx', () => ({
   default: function MockSkillFlowPanel({ skillId, stepRenderers, onCompleted, onCancelled }) {
     return <div data-testid="skill-flow-panel" data-skill-id={skillId} />
   },
 }))
 
-import { startSkill } from '../api.js'
-import WriteFlow from './WriteFlow.jsx'
-import * as WriteFlowModule from './WriteFlow.jsx'
+import { startSkill } from '@/api.js'
+import WriteFlow from '@/workbench/WriteFlow.jsx'
+import * as WriteFlowModule from '@/workbench/WriteFlow.jsx'
 
 describe('WriteFlow', () => {
   beforeEach(() => {
