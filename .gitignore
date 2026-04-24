@@ -56,3 +56,9 @@ e2e/e2e/reports/
 
 .superpowers/
 .gstack/
+
+# Local runtime project data
+.claude/.webnovel-current-project
+.claude/scripts/
+.playwright-cli/
+webnovel-writer/projects/
