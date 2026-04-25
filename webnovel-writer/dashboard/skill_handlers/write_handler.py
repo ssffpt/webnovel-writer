@@ -6,6 +6,8 @@ import json
 
 from pathlib import Path
 
+import aiohttp
+
 from ..script_adapter import ScriptAdapter
 from ..skill_runner import SkillHandler
 from ..skill_models import StepDefinition, StepState
@@ -72,10 +74,13 @@ class WriteSkillHandler(SkillHandler):
         execution_pack = context.get("execution_pack", {})
         task_brief = context.get("task_brief", {})
         chapter_num = context.get("chapter_num", 1)
+        project_root = context.get("project_root", ".")
 
-        # TODO: actual AI call
-        # Fallback mode
-        draft = self._fallback_draft(chapter_num, task_brief)
+        draft = await self._call_llm_for_draft(
+            chapter_num, execution_pack, task_brief, project_root
+        )
+        if draft is None:
+            draft = self._fallback_draft(chapter_num, task_brief)
 
         context["draft_text"] = draft
         context["draft_word_count"] = len(draft)
@@ -112,14 +117,16 @@ class WriteSkillHandler(SkillHandler):
         draft_text = context.get("draft_text", "")
         task_brief = context.get("task_brief", {})
         style_reference = task_brief.get("style_reference", "")
+        project_root = context.get("project_root", ".")
 
-        # TODO: actual AI call
-        # Fallback mode: no modification
-        adapted_text = draft_text
+        adapted_text = await self._call_llm_for_style_adapt(
+            draft_text, style_reference, project_root
+        )
+        if adapted_text is None:
+            adapted_text = draft_text
 
         context["adapted_text"] = adapted_text
 
-        # Generate diff (simplified: mark whether there were changes)
         has_changes = adapted_text != draft_text
 
         return {
@@ -128,6 +135,123 @@ class WriteSkillHandler(SkillHandler):
             "changes_summary": "风格适配完成" if has_changes else "无需调整（降级模式）",
             "instruction": "请确认风格适配结果",
         }
+
+    # ------------------------------------------------------------------
+    # LLM helpers
+    # ------------------------------------------------------------------
+
+    def _get_llm_config(self, project_root: str) -> dict:
+        """Read LLM config from RAG config (reuses API key / base URL)."""
+        from ..rag_config import RAGConfig
+
+        cfg = RAGConfig(project_root)
+        api_key = cfg.get("RAG_EMBEDDING_API_KEY") or cfg.get("OPENAI_API_KEY", "")
+        base_url = cfg.get("RAG_EMBEDDING_BASE_URL", "https://api.openai.com/v1")
+        model = cfg.get("RAG_LLM_MODEL", "gpt-4o-mini")
+        return {
+            "api_key": api_key,
+            "base_url": base_url.rstrip("/"),
+            "model": model,
+        }
+
+    async def _call_llm(self, messages: list[dict], project_root: str, temperature: float = 0.8) -> str | None:
+        """Call OpenAI-compatible chat completions API."""
+        llm_cfg = self._get_llm_config(project_root)
+        api_key = llm_cfg["api_key"]
+        if not api_key:
+            return None
+
+        url = f"{llm_cfg['base_url']}/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        }
+        payload = {
+            "model": llm_cfg["model"],
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": 4096,
+        }
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, headers=headers, json=payload, timeout=aiohttp.ClientTimeout(total=120)) as resp:
+                    if resp.status != 200:
+                        return None
+                    data = await resp.json()
+                    choice = data.get("choices", [{}])[0]
+                    return choice.get("message", {}).get("content", "")
+        except Exception:
+            return None
+
+    async def _call_llm_for_draft(
+        self, chapter_num: int, execution_pack: dict, task_brief: dict, project_root: str
+    ) -> str | None:
+        """Build prompt and call LLM to generate chapter draft."""
+        outline = task_brief.get("chapter_outline", "")[:800]
+        prev_summaries = task_brief.get("previous_summaries", [])[:3]
+        settings = task_brief.get("relevant_settings", "")[:1200]
+        foreshadowing = task_brief.get("pending_foreshadowing", [])[:5]
+        constraints = task_brief.get("core_constraints", "")[:800]
+        style_ref = task_brief.get("style_reference", "")[:600]
+
+        system_msg = (
+            "你是一位专业中文网络小说写手。请严格根据提供的大纲、设定和约束创作章节正文。"
+            "要求：\n"
+            "1. 输出纯正文，不要添加章节标题、作者备注或总结\n"
+            "2. 字数 2000-2500 字\n"
+            "3. 语言流畅自然，避免模板化表达（如过度使用“然而”“不禁”“仿佛”）\n"
+            "4. 保持人物言行一致，伏笔需自然回收\n"
+            "5. 节奏有张有弛，适当加入对话和动作描写"
+        )
+
+        user_parts = []
+        user_parts.append(f"## 章节大纲\n{outline if outline else '（无大纲）'}")
+        if prev_summaries:
+            user_parts.append(f"## 前文摘要\n" + "\n".join(f"- {s}" for s in prev_summaries))
+        if settings:
+            user_parts.append(f"## 相关设定\n{settings}")
+        if foreshadowing:
+            fs_text = "\n".join(
+                f"- {f.get('text', f) if isinstance(f, dict) else f}" for f in foreshadowing
+            )
+            user_parts.append(f"## 待回收伏笔\n{fs_text}")
+        if constraints:
+            user_parts.append(f"## 写作约束\n{constraints}")
+        if style_ref:
+            user_parts.append(f"## 风格参考\n{style_ref}")
+        user_parts.append(f"\n请创作第 {chapter_num} 章正文。")
+
+        messages = [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": "\n\n".join(user_parts)},
+        ]
+
+        return await self._call_llm(messages, project_root, temperature=0.8)
+
+    async def _call_llm_for_style_adapt(
+        self, draft_text: str, style_reference: str, project_root: str
+    ) -> str | None:
+        """Build prompt and call LLM for style adaptation."""
+        system_msg = (
+            "你是一位资深中文小说编辑。请对提供的章节草稿进行风格适配，消除以下三种 AI 腔调：\n"
+            "1. 模板腔 — 固定句式、过度使用“然而”“不禁”“不由得”\n"
+            "2. 说明腔 — 像百科一样解释设定，缺乏沉浸感\n"
+            "3. 机械腔 — 情绪扁平、节奏单调\n"
+            "要求：保持原意和情节不变，仅优化表达。输出纯正文，不要添加标题或备注。"
+        )
+
+        user_parts = [f"## 草稿\n{draft_text}"]
+        if style_reference:
+            user_parts.append(f"## 风格参考\n{style_reference[:800]}")
+        user_parts.append("\n请对草稿进行风格适配优化。")
+
+        messages = [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": "\n\n".join(user_parts)},
+        ]
+
+        return await self._call_llm(messages, project_root, temperature=0.7)
 
     async def _run_review(self, step: StepState, context: dict) -> dict:
         """并行执行六维审查。"""

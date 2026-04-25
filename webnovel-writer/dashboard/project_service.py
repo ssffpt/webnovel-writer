@@ -137,13 +137,16 @@ def create_project(payload: dict, package_root: Path) -> dict:
 
 
 def list_projects() -> dict:
-    """列出已注册的项目。"""
+    """列出已注册的项目，过滤掉已不存在的目录。"""
     registry = _read_workspaces()
     current = registry.get("last_used_project_root")
     projects: list[dict[str, Any]] = []
 
     for _key, ws in registry.get("workspaces", {}).items():
         project_root = Path(ws.get("current_project_root", ws.get("workspace_root", "")))
+        # 跳过已不存在的目录（清理僵尸记录）
+        if not project_root.exists():
+            continue
         state_path = project_root / ".webnovel" / "state.json"
         info: dict[str, Any] = {
             "name": "未知项目",
@@ -178,3 +181,52 @@ def switch_project(target_path: str) -> dict:
     _register_project(target)
 
     return {"success": True, "project_root": str(target)}
+
+
+def remove_project_from_registry(project_path: str) -> dict:
+    """从注册表中移除项目（不删除实际目录）。"""
+    registry = _read_workspaces()
+    key = str(Path(project_path).resolve())
+    if key not in registry.get("workspaces", {}):
+        return {"success": False, "error": "项目不在注册表中"}
+    del registry["workspaces"][key]
+    # 如果删除的是当前项目，重置 current
+    if registry.get("last_used_project_root") == key:
+        registry["last_used_project_root"] = None
+    _write_workspaces(registry)
+    return {"success": True}
+
+
+def rename_project(project_path: str, new_title: str) -> dict:
+    """重命名项目：更新 state.json 中的 title。"""
+    target = Path(project_path).resolve()
+    state_path = target / ".webnovel" / "state.json"
+    if not state_path.is_file():
+        return {"success": False, "error": "目标路径不是有效的网文项目"}
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        if "project_info" not in state:
+            state["project_info"] = {}
+        state["project_info"]["title"] = new_title
+        state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {"success": True, "project_root": str(target)}
+    except (json.JSONDecodeError, OSError) as e:
+        return {"success": False, "error": str(e)}
+
+
+def cleanup_registry() -> dict:
+    """清理注册表中已不存在的目录。"""
+    registry = _read_workspaces()
+    removed = []
+    workspaces = registry.get("workspaces", {})
+    for key in list(workspaces.keys()):
+        project_root = Path(workspaces[key].get("current_project_root", workspaces[key].get("workspace_root", "")))
+        if not project_root.exists():
+            del workspaces[key]
+            removed.append(str(project_root))
+    # 如果 current 被清理了，重置
+    current = registry.get("last_used_project_root")
+    if current and not Path(current).exists():
+        registry["last_used_project_root"] = None
+    _write_workspaces(registry)
+    return {"success": True, "removed": removed}
