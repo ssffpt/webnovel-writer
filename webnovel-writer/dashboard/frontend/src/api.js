@@ -92,6 +92,15 @@ export function fetchProjects() {
 export function switchProject(path) {
     return postJSON('/api/project/switch', { path });
 }
+export function removeProject(path, deleteDir = false) {
+    return postJSON('/api/project/remove', { path, delete_dir: deleteDir });
+}
+export function renameProject(path, title) {
+    return postJSON('/api/project/rename', { path, title });
+}
+export function cleanupProjects() {
+    return postJSON('/api/project/cleanup', {});
+}
 export function fetchOutlineTree() {
     return fetchJSON('/api/outline/tree');
 }
