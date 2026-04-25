@@ -25,6 +25,7 @@ import OverviewPage from './workbench/OverviewPage.jsx'
 import ChapterPage from './workbench/ChapterPage.jsx'
 import OutlinePage from './workbench/OutlinePage.jsx'
 import SettingPage from './workbench/SettingPage.jsx'
+import ConfigPage from './workbench/ConfigPage.jsx'
 
 // --- Dialogs ---
 
@@ -529,6 +530,10 @@ export default function App() {
           currentProjectPath={workbenchState.summary?.project?.path || null}
           onSwitchProject={handleSwitchProject}
           onCreateNew={handleCreateNew}
+          onProjectsChange={async () => {
+            const data = await fetchProjects()
+            setProjects(data.projects || [])
+          }}
         />
       </div>
 
@@ -538,6 +543,7 @@ export default function App() {
           {activePage === 'chapters' && <ChapterPage {...pageProps} reloadToken={reloadKeys.chapters} />}
           {activePage === 'outline' && <OutlinePage {...pageProps} reloadToken={reloadKeys.outline} />}
           {activePage === 'settings' && <SettingPage {...pageProps} reloadToken={reloadKeys.settings} />}
+          {activePage === 'config' && <ConfigPage />}
         </div>
       </div>
 

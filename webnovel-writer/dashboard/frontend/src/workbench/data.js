@@ -3,6 +3,7 @@ export const WORKBENCH_PAGES = [
   { id: 'outline', label: '大纲', number: '②' },
   { id: 'settings', label: '设定', number: '③' },
   { id: 'chapters', label: '章节', number: '④' },
+  { id: 'config', label: '配置', number: '' },
 ]
 
 export const DEFAULT_WORKBENCH_PAGE = 'overview'

@@ -1,6 +1,6 @@
 import ProjectSwitcher from './ProjectSwitcher.jsx'
 
-export default function TopBar({ model, connected, onSelectPage, projects, currentProjectPath, onSwitchProject, onCreateNew }) {
+export default function TopBar({ model, connected, onSelectPage, projects, currentProjectPath, onSwitchProject, onCreateNew, onProjectsChange }) {
   return (
     <header className="workbench-topbar">
       <nav className="workbench-topbar-nav" aria-label="Workbench pages">
@@ -27,6 +27,7 @@ export default function TopBar({ model, connected, onSelectPage, projects, curre
           currentPath={currentProjectPath}
           onSwitch={onSwitchProject}
           onCreateNew={onCreateNew}
+          onProjectsChange={onProjectsChange}
         />
       </div>
     </header>
