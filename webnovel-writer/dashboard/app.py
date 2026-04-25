@@ -22,7 +22,14 @@ from .models import TASK_IDLE_PAYLOAD
 from .query_service import QueryService
 from .task_service import TaskService
 from .genre_service import list_genres, list_golden_finger_types
-from .project_service import create_project, list_projects, switch_project
+from .project_service import (
+    create_project,
+    list_projects,
+    switch_project,
+    remove_project_from_registry,
+    rename_project,
+    cleanup_registry,
+)
 from .workbench_service import build_chat_response, build_outline_tree, load_project_summary, save_workspace_file
 from .watcher import FileWatcher
 from .skill_registry import default_registry
@@ -488,6 +495,38 @@ def create_app(project_root: str | Path | None = None) -> FastAPI:
         _project_root = Path(result["project_root"])
         _restart_watcher()
         return result
+
+    @app.post("/api/project/remove")
+    def api_remove_project(payload: dict):
+        """从注册表移除项目（可选同时删除目录）。"""
+        path = payload.get("path", "")
+        delete_dir = payload.get("delete_dir", False)
+        result = remove_project_from_registry(path)
+        if not result.get("success"):
+            raise HTTPException(400, result.get("error", "移除失败"))
+        if delete_dir:
+            target = Path(path)
+            if target.exists():
+                import shutil
+                shutil.rmtree(target, ignore_errors=True)
+        return result
+
+    @app.post("/api/project/rename")
+    def api_rename_project(payload: dict):
+        """重命名项目。"""
+        path = payload.get("path", "")
+        new_title = payload.get("title", "")
+        if not new_title or not isinstance(new_title, str) or not new_title.strip():
+            raise HTTPException(400, "title 必填")
+        result = rename_project(path, new_title.strip())
+        if not result.get("success"):
+            raise HTTPException(400, result.get("error", "重命名失败"))
+        return result
+
+    @app.post("/api/project/cleanup")
+    def api_cleanup_registry():
+        """清理注册表中已不存在的目录。"""
+        return cleanup_registry()
 
     # ===========================================================
     # API：大纲树与最近动态

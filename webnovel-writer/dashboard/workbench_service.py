@@ -38,6 +38,7 @@ def load_project_summary(project_root: Path) -> dict[str, Any]:
     return {
         "pages": list(WORKBENCH_PAGES),
         "project": {
+            "path": str(project_root),
             "title": project_info.get("title") or "未命名项目",
             "genre": project_info.get("genre"),
             "target_words": project_info.get("target_words"),
